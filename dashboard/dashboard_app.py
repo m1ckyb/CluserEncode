@@ -20,6 +20,10 @@ except ImportError:
 
 app = Flask(__name__)
 
+# A secret key is required for session management (e.g., for flash messages)
+# It's recommended to set this as an environment variable in production.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "a-super-secret-key-for-dev")
+
 # Use the same DB config as the worker script
 # It is recommended to use environment variables for sensitive data
 DB_CONFIG = {
