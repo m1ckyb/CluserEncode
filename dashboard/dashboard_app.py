@@ -184,8 +184,10 @@ def get_history():
 @app.route('/')
 def dashboard():
     """Renders the main dashboard page."""
+    # Fetch cluster status and worker settings
     nodes, fail_count, db_error = get_cluster_status()
-    
+    settings, settings_db_error = get_worker_settings()
+
     # Add a 'color' key for easy templating
     for node in nodes:
         codec = node.get('codec', '')
@@ -200,19 +202,21 @@ def dashboard():
         'index.html', 
         nodes=nodes, 
         fail_count=fail_count, 
-        db_error=db_error,
+        db_error=db_error or settings_db_error, # Show error from either query
+        settings=settings,
         last_updated=datetime.now().strftime('%H:%M:%S')
     )
 
 @app.route('/options', methods=['GET', 'POST'])
 def options():
+    """
+    Handles the form submission for worker settings from the main dashboard.
+    The GET method is no longer used as the form is on the main page.
+    """
     if request.method == 'POST':
-        # Handle the form submission
         delay = request.form.get('rescan_delay_minutes')
-        # The checkbox sends 'true' when checked, and nothing when unchecked.
         skip_folder = 'true' if request.form.get('skip_encoded_folder') else 'false'
 
-        # Update database
         success1, error1 = update_worker_setting('rescan_delay_minutes', str(delay))
         success2, error2 = update_worker_setting('skip_encoded_folder', skip_folder)
 
@@ -220,11 +224,9 @@ def options():
             flash('Worker settings have been updated successfully!', 'success')
         else:
             flash(f'Failed to update settings. Error: {error1 or error2}', 'danger')
-        return redirect(url_for('options'))
-
-    # For a GET request, fetch settings and render the page
-    settings, db_error = get_worker_settings()
-    return render_template('options.html', settings=settings, db_error=db_error)
+    
+    # Redirect back to the main dashboard page after handling the POST request.
+    return redirect(url_for('dashboard'))
 
 @app.route('/api/status')
 def api_status():
