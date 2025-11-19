@@ -28,15 +28,15 @@
             <label for="rescan_delay_minutes" class="form-label"><strong>Rescan Delay</strong></label>
             <p class="form-text">The delay in minutes after a scan finds files before starting a new scan. 0 means immediate.</p>
             <div class="d-flex align-items-center">
-                <input type="range" class="form-range" min="0" max="60" step="1" id="rescan_delay_minutes" name="rescan_delay_minutes" value="{{ settings.rescan_delay_minutes.value | int }}">
-                <span id="delay-value" class="badge bg-primary ms-3" style="width: 60px;">{{ settings.rescan_delay_minutes.value | int }} min</span>
+                <input type="range" class="form-range" min="0" max="60" step="1" id="rescan_delay_minutes" name="rescan_delay_minutes" value="{{ settings.get('rescan_delay_minutes', {}).get('value', 0) | int }}">
+                <span id="delay-value" class="badge bg-primary ms-3" style="width: 60px;">{{ settings.get('rescan_delay_minutes', {}).get('value', 0) | int }} min</span>
             </div>
         </div>
 
         <!-- Skip Encoded Folder Setting -->
         <div class="mb-4 p-3 border rounded">
             <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" id="skip_encoded_folder" name="skip_encoded_folder" value="true" {{ 'checked' if settings.skip_encoded_folder.value == 'true' }}>
+                <input class="form-check-input" type="checkbox" role="switch" id="skip_encoded_folder" name="skip_encoded_folder" value="true" {{ 'checked' if settings.get('skip_encoded_folder', {}).get('value') == 'true' }}>
                 <label class="form-check-label" for="skip_encoded_folder"><strong>Skip 'encoded' Folders</strong></label>
             </div>
             <p class="form-text">If enabled, the worker will completely ignore any directory named "encoded" and will not scan it for files.</p>
