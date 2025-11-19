@@ -18,7 +18,7 @@
             <h1>Transcode Cluster</h1>
             <div>
                 <span class="badge text-bg-secondary fs-6">
-                    Updated: <span id="last-updated">{{ last_updated }}</span>
+                    Updated: <span id="last-updated">...</span>
                 </span>
             </div>
         </div>
@@ -55,6 +55,7 @@
                                 </div>
                             </div>
                             <div class="card-footer text-end">
+                                <span class="badge text-bg-light me-2">FPS: {{ node.fps }}</span>
                                 <span class="badge text-bg-light me-2">Speed: {{ node.speed }}x</span>
                                 <span class="badge text-bg-{{ node.color }}">Codec: {{ node.codec }}</span>
                             </div>
@@ -89,7 +90,7 @@
 
         <div class="position-fixed bottom-0 end-0 p-3">
             <div class="btn-group" role="group">
-                <button type="button" class="btn btn-danger" id="view-errors-btn" data-bs-toggle="modal" data-bs-target="#failuresModal">
+                <button type="button" class="btn" id="view-errors-btn" data-bs-toggle="modal" data-bs-target="#failuresModal">
                     View Errors <span class="badge text-bg-light" id="fail-count-badge">{{ fail_count }}</span>
                 </button>
                 <button type="button" class="btn btn-outline-danger" id="clear-errors-btn" title="Clear All Errors">
@@ -98,6 +99,13 @@
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-dark">
+        <div class="container text-center text-white-50">
+            Web Dashboard v0.4.0 | <a href="https://github.com/m1ckyb/CluserEncode" target="_blank" class="text-white-50">Project on GitHub</a>
+        </div>
+    </footer>
 
     <!-- Failures Modal -->
     <div class="modal fade" id="failuresModal" tabindex="-1" aria-labelledby="failuresModalLabel" aria-hidden="true">
@@ -142,6 +150,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-end">
+                    <span class="badge text-bg-light me-2">FPS: ${node.fps || 'N/A'}</span>
                     <span class="badge text-bg-light me-2">Speed: ${node.speed}x</span>
                     <span class="badge text-bg-${node.color}">Codec: ${node.codec}</span>
                 </div>
@@ -158,8 +167,18 @@
                 const data = await response.json();
 
                 // Update summary badges
-                document.getElementById('fail-count-badge').innerText = data.fail_count;
-                document.getElementById('last-updated').innerText = data.last_updated;
+                const failCount = data.fail_count;
+                const viewErrorsBtn = document.getElementById('view-errors-btn');
+                document.getElementById('fail-count-badge').innerText = failCount;
+                document.getElementById('last-updated').innerText = new Date().toLocaleTimeString();
+
+                // Update View Errors button color
+                viewErrorsBtn.classList.remove('btn-danger', 'btn-success');
+                if (failCount > 0) {
+                    viewErrorsBtn.classList.add('btn-danger');
+                } else {
+                    viewErrorsBtn.classList.add('btn-success');
+                }
 
                 // Update DB error alert
                 const errorAlert = document.getElementById('db-error-alert');
@@ -264,6 +283,9 @@
                 alert('An error occurred while trying to clear the failures.');
             }
         });
+
+        // Set initial button color on page load
+        updateStatus();
 
         // Run the update function every 5 seconds (5000 milliseconds)
         setInterval(updateStatus, 5000);

@@ -73,3 +73,26 @@ This document summarizes the significant progress made on the Transcode Cluster 
 
 - **Project Restructuring**: The project was reorganized into a clean, modular structure with `dashboard/` and `worker/` subdirectories, each containing its own `Dockerfile` and `requirements.txt`.
 - **Versioning**: Implemented a clear versioning scheme (`0.3.0`), which is now displayed for each worker in the dashboard UI, providing better visibility into the cluster's state.
+
+## 9. Version 0.4.0 - Dashboard UI Enhancements
+
+This version focused on improving the usability and information density of the web dashboard.
+
+- **FPS Display**: The dashboard now shows the Frames Per Second (FPS) for each active transcoding node.
+- **Dynamic Error Button**: The "View Errors" button is now green when there are no errors and red if errors are present.
+- **Local Timestamp**: The "Updated" timestamp now reflects the user's local browser time.
+- **Application Footer**: Added a footer to the dashboard containing the web UI version and a link to the project's GitHub repository.
+
+
+## 10. CI/CD Enhancements & Branching Strategy
+
+- **Branching Model**: Implemented a Git branching model using `main` for production-ready code and `develop` for ongoing development.
+- **Development Workflow**:
+    - The GitHub Actions pipeline is now configured to trigger on every push to the `develop` branch.
+    - This automatically builds and publishes the `dashboard` and `worker` images to GHCR with a `:develop` tag.
+- **Release Workflow**:
+    - Pushing to `main` no longer triggers a build. Instead, a new build is triggered only when a **new release is created** in GitHub.
+    - When a release is created (e.g., `v1.0.0`), the pipeline builds and publishes images with two tags: the specific version number (e.g., `:v1.0.0`) and `:latest`.
+- **Docker Compose Integration**:
+    - The `docker-compose.yml` file was updated to pull pre-built images directly from GHCR instead of building them locally.
+    - It is configured to use the `:latest` tag, ensuring that running `docker-compose up` deploys the most recent official release.
