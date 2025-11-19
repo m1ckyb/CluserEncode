@@ -614,28 +614,25 @@ def report_and_log_failure(filename, exit_code, log, db, failure_set, temp_file)
     print("-" * 40)
 
 
-def check_for_updates():
+def check_for_updates(auto_update=False):
     """Checks GitHub for a newer version of the script and prompts to update."""
     print(f"Worker Version: {VERSION}")
     version_url = "https://raw.githubusercontent.com/m1ckyb/CluserEncode/develop/VERSION.txt"
     script_url = f"https://raw.githubusercontent.com/m1ckyb/CluserEncode/develop/worker/transcode.py"
-    
+
     try:
         with urllib.request.urlopen(version_url) as response:
             remote_version = response.read().decode('utf-8').strip()
 
         # Simple version comparison
         if remote_version > VERSION:
-            print("-" * 40)
             print(f"✨ A new version is available: {remote_version}")
-            print("-" * 40)
-            answer = input("Do you want to update now? [y/N]: ").lower().strip()
-            
-            if answer in ['y', 'yes']:
+
+            if auto_update:
                 print("Downloading update...")
                 with urllib.request.urlopen(script_url) as response:
                     new_script_content = response.read()
-                
+
                 script_path = Path(__file__).resolve()
                 with open(script_path, 'wb') as f:
                     f.write(new_script_content)
@@ -643,7 +640,7 @@ def check_for_updates():
                 print("✅ Update successful! Please run the script again.")
                 sys.exit(0)
             else:
-                print("Skipping update. You can update later by re-running the script.")
+                print("Skipping update. To update, run with the --update flag.")
 
     except Exception as e:
         print(f"⚠️  Could not check for updates: {e}")
@@ -664,6 +661,7 @@ def main():
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--allow-hevc", action="store_true", help="Re-encode HEVC files")
     parser.add_argument("--allow-av1", action="store_true", help="Re-encode AV1 files")
+    parser.add_argument("--update", action="store_true", help="Automatically download and apply updates if available.")
     
     parser.add_argument("--force-nvidia", action="store_true", help="Force NVENC")
     parser.add_argument("--force-qsv", action="store_true", help="Force Intel QSV")
@@ -673,7 +671,7 @@ def main():
     args = parser.parse_args()
 
     # Perform self-update check before doing anything else
-    check_for_updates()
+    check_for_updates(auto_update=args.update)
 
     # Connect to DB using centralized config
     db = DatabaseHandler(DB_CONFIG)

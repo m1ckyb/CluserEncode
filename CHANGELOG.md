@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2025-11-19 - The Non-Interactive Fix
+
+### Changed
+- **Worker Self-Update**: The self-update mechanism is now non-interactive to prevent terminal-related bugs within Docker. An `--update` command-line flag was added to enable this, and it is now the default for the Docker Compose service.
+
+### Fixed
+- **Update Prompt Bug**: Fixed a bug where the interactive update prompt would not accept input inside a Docker container due to line ending issues (`^M`).
+
 ## [0.7.0] - 2025-11-19 - The Boring & Broken Update
 
 ### Fixed

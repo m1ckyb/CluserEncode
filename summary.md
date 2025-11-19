@@ -134,7 +134,15 @@ This release was primarily focused on fixing a cascade of bugs related to the pr
   - **Layout Correction**: Fixed numerous UI bugs, including the broken layout of active node cards and inconsistent headers, by moving the "Updated" timestamp and theme switcher into a globally consistent footer.
   - **Robustness**: The options page was improved to handle cases where the database settings have not yet been initialized by a worker, preventing it from crashing on a fresh deployment.
 
-## 15. CI/CD Enhancements & Branching Strategy
+## 15. Version 0.7.1 (Alpha) - The Non-Interactive Fix
+
+This small release addressed a critical usability bug with the worker's self-update feature when running inside Docker.
+
+- **Non-Interactive Updates**: The worker's self-update prompt was removed in favor of a non-interactive system. An `--update` command-line flag was added to trigger the update automatically.
+- **Docker Default Behavior**: The `docker-compose.yml` file was updated to include the `--update` flag in the worker's command, making automatic updates the default behavior for containerized deployments. This resolves a bug where the interactive prompt would fail due to terminal line-ending conflicts (`^M`) inside the container.
+
+
+## 16. CI/CD Enhancements & Branching Strategy
 
 - **Branching Model**: Implemented a Git branching model using `main` for production-ready code and `develop` for ongoing development.
 - **Development Workflow**:
