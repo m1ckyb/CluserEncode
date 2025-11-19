@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.3] - 2025-11-20 - UI Refinements
+
+### Changed
+- **Dashboard UI**: Merged the `/options` page into a new "Options" tab on the main dashboard to consolidate all controls in one place.
+- **Dashboard Layout**: Refined the header layout by moving the "View Errors" button inline with the page title and placing the "Updated" clock on its own line for better alignment.
+
+### Fixed
+- **UI Visibility**: Improved the text contrast of the badge on the "View Errors" button to ensure it is readable against all background colors (e.g., green or red).
+- **Dark Mode Footer**: The footer in dark mode is now darker, providing better visual separation from the page content.
+
 ## [0.7.2] - 2025-11-20 - CSS Fixes
 
 ### Fixed
