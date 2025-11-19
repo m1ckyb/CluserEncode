@@ -612,8 +612,8 @@ def report_and_log_failure(filename, exit_code, log, db, failure_set, temp_file)
 def check_for_updates():
     """Checks GitHub for a newer version of the script and prompts to update."""
     print(f"Worker Version: {VERSION}")
-    version_url = "https://raw.githubusercontent.com/m1ckyb/CluserEncode/main/VERSION.txt"
-    script_url = f"https://raw.githubusercontent.com/m1ckyb/CluserEncode/main/worker/transcode.py"
+    version_url = "https://raw.githubusercontent.com/m1ckyb/CluserEncode/develop/VERSION.txt"
+    script_url = f"https://raw.githubusercontent.com/m1ckyb/CluserEncode/develop/worker/transcode.py"
     
     try:
         with urllib.request.urlopen(version_url) as response:
