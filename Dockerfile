@@ -1,21 +1,23 @@
-# Use an official lightweight Python image as a parent image
-FROM python:3.10-slim
+# Use an official lightweight Python image
+FROM python:3.9-slim
 
-# Set the working directory in the container
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy the dependencies file to the working directory
+# Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
+# Install the Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code (the dashboard app and its templates)
+# Copy the application code and templates into the container
+# Assumes your templates are in a 'templates' folder
 COPY dashboard_app.py .
-COPY templates/ templates/
+COPY templates/ ./templates/
 
-# Make port 5000 available to the world outside this container
+# Expose the port the app runs on
 EXPOSE 5000
 
-# Define the command to run your app
-CMD ["python", "dashboard_app.py"]
+# Set the command to run the application
+# We use gunicorn for a more production-ready server
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
