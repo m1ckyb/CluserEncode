@@ -2,7 +2,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from flask import Flask, render_template, g
+from flask import Flask, render_template, g, request, flash, redirect, url_for
 from flask import jsonify
 # Check for Postgres Driver
 try:
@@ -113,6 +113,47 @@ def clear_failed_files():
     except Exception as e:
         db_error = f"Database query failed: {e}"
     return db_error
+
+def get_worker_settings():
+    """Fetches all worker settings from the database."""
+    db = get_db()
+    settings = {}
+    db_error = None
+    if db is None:
+        db_error = "Cannot connect to the PostgreSQL database."
+        return settings, db_error
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT key, value, description FROM worker_settings")
+            for row in cur.fetchall():
+                settings[row['key']] = row
+    except Exception as e:
+        db_error = f"Database query failed: {e}"
+    return settings, db_error
+
+def update_worker_setting(key, value):
+    """Updates a specific worker setting in the database."""
+    db = get_db()
+    db_error = None
+    if db is None:
+        db_error = "Cannot connect to the PostgreSQL database."
+        return False, db_error
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE worker_settings SET value = %s, updated_at = NOW() WHERE key = %s",
+                (value, key)
+            )
+        db.commit()
+    except Exception as e:
+        db_error = f"Database query failed: {e}"
+        try:
+            db.rollback()
+        except:
+            pass
+        return False, db_error
+    return True, None
+
 # ===========================
 # History Functions
 # ===========================
@@ -158,6 +199,28 @@ def dashboard():
         db_error=db_error,
         last_updated=datetime.now().strftime('%H:%M:%S')
     )
+
+@app.route('/options', methods=['GET', 'POST'])
+def options():
+    if request.method == 'POST':
+        # Handle the form submission
+        delay = request.form.get('rescan_delay_minutes')
+        # The checkbox sends 'true' when checked, and nothing when unchecked.
+        skip_folder = 'true' if request.form.get('skip_encoded_folder') else 'false'
+
+        # Update database
+        success1, error1 = update_worker_setting('rescan_delay_minutes', str(delay))
+        success2, error2 = update_worker_setting('skip_encoded_folder', skip_folder)
+
+        if success1 and success2:
+            flash('Worker settings have been updated successfully!', 'success')
+        else:
+            flash(f'Failed to update settings. Error: {error1 or error2}', 'danger')
+        return redirect(url_for('options'))
+
+    # For a GET request, fetch settings and render the page
+    settings, db_error = get_worker_settings()
+    return render_template('options.html', settings=settings, db_error=db_error)
 
 @app.route('/api/status')
 def api_status():
