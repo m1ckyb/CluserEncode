@@ -90,7 +90,7 @@ def get_failed_files_list():
     
     try:
         with db.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT filename, reason, reported_at FROM failed_files ORDER BY reported_at DESC")
+            cur.execute("SELECT filename, reason, reported_at, log FROM failed_files ORDER BY reported_at DESC")
             files = cur.fetchall()
     except Exception as e:
         db_error = f"Database query failed: {e}"

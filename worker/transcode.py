@@ -8,6 +8,7 @@ import subprocess
 import socket
 import threading
 import re
+import urllib.request
 import json
 from pathlib import Path
 from datetime import datetime
@@ -25,7 +26,7 @@ except ImportError:
 # Global Settings
 # ===========================
 
-VERSION = "1.5-WebApp"
+VERSION = "1.6"
 HOSTNAME = socket.gethostname()
 STOP_EVENT = threading.Event()
 
@@ -78,14 +79,16 @@ class DatabaseHandler:
                 codec VARCHAR(50),
                 percent INTEGER,
                 speed VARCHAR(50),
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                version VARCHAR(50)
             )
             """,
             """
             CREATE TABLE IF NOT EXISTS failed_files (
                 filename TEXT PRIMARY KEY,
                 reason TEXT,
-                reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                log TEXT
             )
             """
         ]
@@ -96,23 +99,24 @@ class DatabaseHandler:
                     cur.execute(cmd)
             conn.close()
 
-    def update_heartbeat(self, filename, codec, percent, speed):
+    def update_heartbeat(self, filename, codec, percent, speed, version):
         sql = """
-        INSERT INTO active_nodes (hostname, file, codec, percent, speed, last_updated)
-        VALUES (%s, %s, %s, %s, %s, NOW())
+        INSERT INTO active_nodes (hostname, file, codec, percent, speed, last_updated, version)
+        VALUES (%s, %s, %s, %s, %s, NOW(), %s)
         ON CONFLICT (hostname) 
         DO UPDATE SET 
             file = EXCLUDED.file,
             codec = EXCLUDED.codec,
             percent = EXCLUDED.percent,
             speed = EXCLUDED.speed,
-            last_updated = NOW();
+            last_updated = NOW(),
+            version = EXCLUDED.version;
         """
         conn = self.get_conn()
         if conn:
             try:
                 with conn.cursor() as cur:
-                    cur.execute(sql, (HOSTNAME, filename, codec, percent, speed))
+                    cur.execute(sql, (HOSTNAME, filename, codec, percent, speed, version))
                 # Heartbeats are too frequent to log
             except Exception as e:
                 print(f"Heartbeat Failed: {e}")
@@ -140,13 +144,18 @@ class DatabaseHandler:
                 conn.close()
         return nodes, failures
 
-    def report_failure(self, filename, reason="Crash/Fail"):
-        sql = "INSERT INTO failed_files (filename, reason) VALUES (%s, %s) ON CONFLICT (filename) DO NOTHING"
+    def report_failure(self, filename, reason="Crash/Fail", log=""):
+        sql = """
+        INSERT INTO failed_files (filename, reason, log, reported_at) 
+        VALUES (%s, %s, %s, NOW()) 
+        ON CONFLICT (filename) 
+        DO UPDATE SET reason = EXCLUDED.reason, log = EXCLUDED.log, reported_at = NOW()
+        """
         conn = self.get_conn()
         if conn:
             try:
                 with conn.cursor() as cur:
-                    cur.execute(sql, (filename, reason))
+                    cur.execute(sql, (filename, reason, log))
                     print(f"Reported Failure: {filename[:15]}...")
             finally:
                 conn.close()
@@ -432,24 +441,12 @@ def worker_loop(root, args, hw_settings, db):
 
                 else:
                     # --- CRASH REPORTING (Saves local log + reports to DB) ---
+                    reason = f"FFmpeg exited with code {ret}"
                     if temp_out.exists(): temp_out.unlink()
-                    db.report_failure(fname)
+                    db.report_failure(fname, reason=reason, log=err_log)
                     global_failures.add(fname)
 
-                    # 1. Write local error log for post-mortem debugging
-                    log_dir = dir_path / ".transcode_logs"
-                    log_dir.mkdir(exist_ok=True)
-                    log_file_path = log_dir / f"{fname}.log"
-                    with open(log_file_path, 'w') as f:
-                        f.write(f"--- CRASH REPORT - {datetime.now()} ---\n")
-                        f.write(f"FFmpeg exit code: {ret}\n")
-                        f.write(f"Hardware used: {hw_settings['codec']}\n")
-                        f.write("-" * 40 + "\n")
-                        f.write(err_log)
-
-                    # 2. Print summary to console (Always print crash, even if silent)
-                    print(f"\n❌ CRASH REPORT FOR {fname}:")
-                    print(f"   FFmpeg exit code: {ret}. LOG SAVED to: {log_file_path}")
+                    print(f"\n❌ CRASH REPORT FOR {fname}: {reason}. Log saved to database.")
                     print("-" * 40)
                     if args.debug: print(f"DEBUG: FFmpeg Failed: {fname} (Code {ret}). LOG SAVED.")
 
@@ -462,6 +459,44 @@ def worker_loop(root, args, hw_settings, db):
     
     print("\n🏁 Queue finished.")
     db.clear_node() 
+
+def check_for_updates():
+    """Checks GitHub for a newer version of the script and prompts to update."""
+    print(f"Worker Version: {VERSION}")
+    version_url = "https://raw.githubusercontent.com/m1ckyb/CluserEncode/main/worker/version.txt"
+    script_url = "https://raw.githubusercontent.com/m1ckyb/CluserEncode/main/worker/transcode.py"
+    
+    try:
+        with urllib.request.urlopen(version_url) as response:
+            remote_version = response.read().decode('utf-8').strip()
+
+        # Simple version comparison
+        if remote_version > VERSION:
+            print("-" * 40)
+            print(f"✨ A new version is available: {remote_version}")
+            print("-" * 40)
+            answer = input("Do you want to update now? [y/N]: ").lower().strip()
+            
+            if answer in ['y', 'yes']:
+                print("Downloading update...")
+                with urllib.request.urlopen(script_url) as response:
+                    new_script_content = response.read()
+                
+                script_path = Path(__file__).resolve()
+                with open(script_path, 'wb') as f:
+                    f.write(new_script_content)
+                
+                print("✅ Update successful! Please run the script again.")
+                sys.exit(0)
+            else:
+                print("Skipping update. You can update later by re-running the script.")
+
+    except Exception as e:
+        print(f"⚠️  Could not check for updates: {e}")
+
+# ===========================
+# Main Execution
+# ===========================
 
 def main():
     parser = argparse.ArgumentParser()
@@ -482,6 +517,9 @@ def main():
     parser.add_argument("--force-cpu", action="store_true", help="Force CPU (Slow)")
     
     args = parser.parse_args()
+
+    # Perform self-update check before doing anything else
+    check_for_updates()
 
     # Connect to DB using centralized config
     db = DatabaseHandler(DB_CONFIG)
