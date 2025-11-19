@@ -19,5 +19,5 @@ COPY templates/ ./templates/
 EXPOSE 5000
 
 # Set the command to run the application
-# We use gunicorn for a more production-ready server
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Use Gunicorn as a production-ready WSGI server
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "dashboard_app:app"]
