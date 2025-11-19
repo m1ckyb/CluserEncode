@@ -130,6 +130,21 @@ class DatabaseHandler:
                         encoded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS worker_settings (
+                        key VARCHAR(50) PRIMARY KEY,
+                        value TEXT,
+                        description TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                # --- Insert default settings if they don't exist ---
+                cur.execute("""
+                    INSERT INTO worker_settings (key, value, description) VALUES
+                    ('rescan_delay_minutes', '0', 'Delay in minutes after a full scan with processed files before starting a new scan. 0 means immediate.'),
+                    ('skip_encoded_folder', 'true', 'If true, completely ignore any directory named "encoded".')
+                    ON CONFLICT (key) DO NOTHING;
+                """)
 
             conn.close()
 
@@ -220,6 +235,22 @@ class DatabaseHandler:
             finally:
                 conn.close()
         return files
+
+    def get_worker_settings(self):
+        """Fetches all worker settings from the database."""
+        settings = {}
+        conn = self.get_conn()
+        if conn:
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT key, value FROM worker_settings")
+                    for row in cur.fetchall():
+                        settings[row['key']] = row['value']
+            except Exception as e:
+                print(f"DB Error fetching settings: {e}")
+            finally:
+                conn.close()
+        return settings
 
     def clear_node(self):
         conn = self.get_conn()
@@ -379,6 +410,11 @@ def worker_loop(root, args, hw_settings, db):
     # --- Main Watcher Loop ---
     while not STOP_EVENT.is_set():
         files_processed_this_scan = 0
+
+        # Fetch the latest settings at the start of each full scan
+        worker_settings = db.get_worker_settings()
+        rescan_delay_minutes = int(worker_settings.get('rescan_delay_minutes', 0))
+        skip_encoded_folder = worker_settings.get('skip_encoded_folder', 'true').lower() == 'true'
         
         # Get a fresh list of failed files for each scan
         global_failures = db.get_failed_files()
@@ -386,8 +422,12 @@ def worker_loop(root, args, hw_settings, db):
         # Get a fresh iterator for each scan
         iterator = os.walk(root) if args.recursive else [(str(root), [], os.listdir(root))]
 
-        for dirpath, _, filenames in iterator:
+        for dirpath, dirnames, filenames in iterator:
             if STOP_EVENT.is_set(): break
+
+            if skip_encoded_folder and 'encoded' in dirnames:
+                dirnames.remove('encoded') # This stops os.walk from descending into it
+
             dir_path = Path(dirpath)
             for fname in filenames:
                 if STOP_EVENT.is_set(): break
@@ -519,7 +559,9 @@ def worker_loop(root, args, hw_settings, db):
             print(f"\n🏁 Scan complete. Watching for new files... (Next scan in 60s)")
             STOP_EVENT.wait(60) # Wait for 60 seconds or until STOP_EVENT is set
         else:
-            print("\n🏁 Scan complete. Re-scanning immediately for more files...")
+            print(f"\n🏁 Scan complete. Re-scanning in {rescan_delay_minutes} minute(s)...")
+            if rescan_delay_minutes > 0:
+                STOP_EVENT.wait(rescan_delay_minutes * 60)
 
     print("\nWatcher stopped.")
     db.clear_node() 

@@ -15,7 +15,7 @@
                     return storedTheme;
                 }
                 // If no stored theme, use system preference
-                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                return 'dark'; // Default to dark mode for new users
             };
             const theme = getPreferredTheme();
             // Set the theme on the <html> element
@@ -38,6 +38,9 @@
         [data-bs-theme="dark"] {
             --footer-bg: rgba(var(--bs-dark-rgb), 0.75);
             --footer-border: rgba(var(--bs-light-rgb), 0.1);
+            /* Explicitly set footer text/link colors for dark mode */
+            --footer-text: var(--bs-secondary-color);
+            --footer-link: var(--bs-body-color);
         }
 
         html, body {
@@ -90,7 +93,7 @@
     <!-- Footer -->
     <footer class="footer py-3">
         <div class="container d-flex justify-content-between align-items-center">
-            <span>Web Dashboard v0.5.0</span>
+            <span>Web Dashboard v0.6.0</span>
             <a href="https://github.com/m1ckyb/CluserEncode" target="_blank">Project on GitHub</a>
         </div>
     </footer>

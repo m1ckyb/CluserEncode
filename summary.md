@@ -110,7 +110,19 @@ This version introduced a major user experience enhancement with a full theming 
 - **Template Refactoring**: The frontend code was made more maintainable by introducing a `base.html` template. This base template now holds the common page structure, the new theme-switching logic, and the footer, while `index.html` extends it to render the main content.
 
 
-## 13. CI/CD Enhancements & Branching Strategy
+## 13. Version 0.6.0 - Command & Control
+
+This version introduced a powerful configuration system, allowing for dynamic control over worker behavior directly from the web UI.
+
+- **Worker Options Page**: A new "Options" page was created in the dashboard, providing a user-friendly interface for changing worker settings.
+- **Database-Driven Configuration**: A new `worker_settings` table was added to the database to store and persist configuration. The worker script was updated to create this table and populate it with default values if it doesn't exist.
+- **Configurable Scan Behavior**:
+  - **Rescan Delay**: Users can now set a delay (0-60 minutes) that workers will wait before starting a new scan after processing files.
+  - **Folder Exclusion**: A toggle was added to enable or disable the skipping of any directory named `encoded`.
+- **Dynamic Worker Logic**: The core worker loop was updated to fetch the latest settings from the database at the beginning of each full scan, allowing for real-time changes to the cluster's behavior without restarting any services.
+
+
+## 14. CI/CD Enhancements & Branching Strategy
 
 - **Branching Model**: Implemented a Git branching model using `main` for production-ready code and `develop` for ongoing development.
 - **Development Workflow**:

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2025-11-19 - Command & Control
+
+### Added
+- **Worker Options Page**: Created a new `/options` page in the dashboard to allow for dynamic configuration of worker behavior.
+- **Database-Driven Settings**: Implemented a new `worker_settings` table in the database to store and persist configuration, with sensible defaults.
+- **Configurable Rescan Delay**: Added an option with a slider (0-60 minutes) to set a delay before workers rescan for files after a successful batch.
+- **Configurable Folder Exclusion**: Added an option to make workers completely ignore directories named `encoded`.
+
+### Changed
+- **Worker Logic**: The worker now fetches the latest settings from the database at the start of every scan cycle and applies them.
+
 ## [0.5.0] - 2025-11-19 - Into the Darkness
 
 ### Added
