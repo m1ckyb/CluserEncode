@@ -322,20 +322,26 @@ def detect_hardware_settings(accel_mode):
     if accel_mode == "cpu": return get_hw_config("cpu")
 
     print("🔍 Probing Hardware...", end=" ", flush=True)
+
+    # --- Universal FFmpeg Capability Check ---
     try:
-        hw_out = subprocess.check_output(["ffmpeg", "-hide_banner", "-hwaccels"], text=True)
-        enc_out = subprocess.check_output(["ffmpeg", "-hide_banner", "-encoders"], text=True)
-    except:
+        # Run these once to avoid multiple subprocess calls
+        hw_out = subprocess.check_output(["ffmpeg", "-hide_banner", "-hwaccels"], text=True, stderr=subprocess.STDOUT)
+        enc_out = subprocess.check_output(["ffmpeg", "-hide_banner", "-encoders"], text=True, stderr=subprocess.STDOUT)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        # If ffmpeg isn't found or fails, we can only use CPU
+        print("⚠️ FFmpeg not found or failed, falling back to CPU.")
         return get_hw_config("cpu")
 
-    has_nvidia_dev = os.path.exists("/dev/nvidia0")
-    has_render_dev = os.path.exists("/dev/dri/renderD128") 
-
-    if has_nvidia_dev and "cuda" in hw_out and "hevc_nvenc" in enc_out:
+    # --- Check 1: NVIDIA (Priority) ---
+    # This is the most reliable check for Linux, Docker, and WSL with NVIDIA drivers.
+    # It checks if ffmpeg was compiled with CUDA support and can see the nvenc encoder.
+    if "cuda" in hw_out and "hevc_nvenc" in enc_out:
         print("✅ Found NVIDIA")
         return get_hw_config("nvidia")
 
-    if has_render_dev and "vaapi" in hw_out and "hevc_vaapi" in enc_out:
+    # --- Check 2: VAAPI (Intel/AMD on Linux) ---
+    if "vaapi" in hw_out and "hevc_vaapi" in enc_out and sys.platform.startswith('linux'):
         print("✅ Found VAAPI")
         return get_hw_config("vaapi")
         

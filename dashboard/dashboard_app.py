@@ -318,8 +318,7 @@ def api_start_node(hostname):
     if not success:
         return jsonify(success=False, error=error), 500
     
-    flash(f"Start command sent to node '{hostname}'.", 'info')
-    return jsonify(success=True)
+    return jsonify(success=True, message=f"Start command sent to node '{hostname}'.")
 
 @app.route('/api/history', methods=['GET'])
 def api_history():
