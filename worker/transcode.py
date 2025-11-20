@@ -402,9 +402,13 @@ def run_with_progress(cmd, total_duration, db, filename, hw_settings):
 
             # --- Pause/Resume Logic ---
             command = db.get_node_command(HOSTNAME)
-            if command == 'paused' and not is_paused:
-                if is_debug_mode:
-                    print(f"\nDEBUG: Received command from dashboard: 'pause'")
+            if command == 'quit':
+                if is_debug_mode: print("\nDEBUG: Received 'quit' command during transcode. Shutting down.")
+                STOP_EVENT.set()
+                process.kill() # Immediately kill ffmpeg
+                break
+            elif command == 'paused' and not is_paused:
+                if is_debug_mode: print(f"\nDEBUG: Received command from dashboard: 'pause'")
                 print("\n⏸️ Pausing transcode...")
                 process.send_signal(signal.SIGSTOP)
                 is_paused = True
@@ -443,12 +447,6 @@ def run_with_progress(cmd, total_duration, db, filename, hw_settings):
                 err_log = [] 
 
                 if time.time() - last_update > 2:
-                    # While checking for updates, also check for a quit command.
-                    if db.get_node_command(HOSTNAME) == 'quit':
-                        if is_debug_mode: print("\nDEBUG: Received 'quit' command during transcode. Shutting down.")
-                        STOP_EVENT.set()
-                        process.kill()
-                        break
                     db.update_heartbeat(filename, hw_settings['codec'], int(percent), speed, VERSION, fps=int(fps))
                     last_update = time.time()
 
