@@ -267,6 +267,21 @@
         </div>
     </div>
 
+    <!-- Per-Node Options Modal -->
+    <div class="modal fade" id="nodeOptionsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="nodeOptionsModalTitle">Node Options</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>More per-node options will be available here in the future.</p>
+                    <button id="quit-node-btn" class="btn btn-danger w-100">Quit Worker Process</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         // Function to create an HTML element for a single node
         function createNodeCard(node) {
@@ -276,11 +291,10 @@
                 <div class="card-header fs-5 d-flex justify-content-between align-items-center">
                     <span>${node.hostname}</span>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="showNodeOptions('${node.hostname}')">Options</button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="showNodeOptions('${node.hostname}')">Options</button>
                         <button class="btn btn-sm btn-success" onclick="startNode('${node.hostname}')" ${node.status !== 'idle' ? 'disabled' : ''}>Start</button>
                         <button class="btn btn-sm btn-danger" onclick="stopNode('${node.hostname}')" ${node.status === 'idle' ? 'disabled' : ''}>Stop</button>
                         <button class="btn btn-sm btn-warning" onclick="pauseResumeNode('${node.hostname}', '${node.status}')" ${node.status === 'idle' ? 'disabled' : ''}>${node.status === 'paused' ? 'Resume' : 'Pause'}</button>
-                        <button class="btn btn-sm btn-dark" onclick="quitNode('${node.hostname}')" title="Immediately stop the worker process.">Quit</button>
                         <span class="badge bg-info">${node.version || 'N/A'}</span>
                     </div>
                 </div>
@@ -523,8 +537,16 @@
         }
 
         // Placeholder for future per-node options
+        let nodeOptionsModal = null;
         function showNodeOptions(hostname) {
-            alert(`Per-node options for '${hostname}' are not yet implemented.`);
+            if (!nodeOptionsModal) {
+                nodeOptionsModal = new bootstrap.Modal(document.getElementById('nodeOptionsModal'));
+            }
+            document.getElementById('nodeOptionsModalTitle').innerText = `Options for ${hostname}`;
+            const quitBtn = document.getElementById('quit-node-btn');
+            // Re-assign the onclick event to the button for the specific hostname
+            quitBtn.onclick = () => quitNode(hostname);
+            nodeOptionsModal.show();
         }
     </script>
     <script>

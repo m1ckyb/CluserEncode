@@ -501,6 +501,9 @@ def worker_loop(root, db, cli_args):
                 break # Exit idle loop and start scanning
             time.sleep(5) # Check for command every 5 seconds
 
+        # If the quit command was received, exit the main loop immediately.
+        if STOP_EVENT.is_set(): break
+
         files_processed_this_scan = 0
 
         # Fetch the latest settings at the start of each full scan
@@ -684,7 +687,7 @@ def worker_loop(root, db, cli_args):
                         db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
                         stop_command_received = True
                         break # Exit the file loop (for fname in filenames)
-
+                    
                     if args.debug: print(f"DEBUG: Lock Released: {fname}")
             if 'stop_command_received' in locals() and stop_command_received: break
 
