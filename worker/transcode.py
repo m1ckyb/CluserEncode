@@ -671,6 +671,8 @@ def worker_loop(root, db, cli_args):
                     # After each file, check if a stop command has been issued.
                     if db.get_node_command(HOSTNAME) == 'idle':
                         # This is the key fix: We use a flag to break out of the inner loops
+                        if is_debug_mode: print("\nDEBUG: 'stop' command detected after file. Forcing idle state.")
+                        db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
                         stop_command_received = True
                         break # Exit the file loop (for fname in filenames)
 
@@ -693,6 +695,8 @@ def worker_loop(root, db, cli_args):
             if db.get_node_command(HOSTNAME) == 'idle':
                 if is_debug_mode:
                     print("\nDEBUG: Received 'stop' command. Returning to idle state.")
+                # Force the state to idle in the database immediately.
+                db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
                 stop_command_received = True
                 break # Exit the wait loop
             
