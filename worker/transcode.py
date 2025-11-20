@@ -666,6 +666,14 @@ def worker_loop(root, db, cli_args):
                     print(f"Fatal Error on {fname}: {e}")
                 finally:
                     if lock_file.exists(): lock_file.unlink()
+
+                    # After each file, check if a stop command has been issued.
+                    if db.get_node_command(HOSTNAME) == 'idle':
+                        if is_debug_mode:
+                            print("\nDEBUG: Received 'stop' command after file processing. Returning to idle.")
+                        STOP_EVENT.set() # Use STOP_EVENT to break out of all scanning loops
+                        break
+
                     if args.debug: print(f"DEBUG: Lock Released: {fname}")
         
         if STOP_EVENT.is_set():
