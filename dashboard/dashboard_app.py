@@ -439,8 +439,8 @@ def api_stats():
         total_new = agg_stats['total_new_size'] or 0
         stats = {
             'total_files': agg_stats['total_files'] or 0,
-            'total_original_size_tb': round(total_original / (1024**4), 2),
-            'total_new_size_tb': round(total_new / (1024**4), 2),
+            'total_original_size_gb': round(total_original / (1024**3), 2),
+            'total_new_size_gb': round(total_new / (1024**3), 2),
             'total_reduction_percent': round((1 - total_new / total_original) * 100, 1) if total_original > 0 else 0
         }
 

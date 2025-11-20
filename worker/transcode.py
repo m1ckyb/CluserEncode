@@ -683,7 +683,6 @@ def worker_loop(root, db, cli_args):
                     if ret == 0:
                         if temp_out.exists() and temp_out.stat().st_size < info['size']:                        
                             finalize_file(db, history_id, fpath, temp_out, new_filename_base, args.keep_original, args.backup_directory)
-                            db.clear_node() 
                             print("\n✅ Finished.")
 
                         else:
