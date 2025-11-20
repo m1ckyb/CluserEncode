@@ -32,6 +32,12 @@
                 <button class="nav-link active" id="nodes-tab" data-bs-toggle="tab" data-bs-target="#nodes-tab-pane" type="button" role="tab">Active Nodes</button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats-tab-pane" type="button" role="tab">Stats</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="cleanup-tab" data-bs-toggle="tab" data-bs-target="#cleanup-tab-pane" type="button" role="tab">Cleanup</button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-tab-pane" type="button" role="tab">History</button>
             </li>
             <li class="nav-item" role="presentation">
@@ -85,9 +91,50 @@
                     {% endif %}
                 </div>
             </div>
+            <!-- Stats Tab -->
+            <div class="tab-pane fade" id="stats-tab-pane" role="tabpanel">
+                <div class="mt-3">
+                    <div class="row text-center g-3" id="stats-cards-container">
+                        <!-- Stat cards will be loaded here by JavaScript -->
+                        <div class="col-12">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <h5>Recently Encoded Files</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Node</th>
+                                    <th>Codec</th>
+                                    <th>Size (GB)</th>
+                                    <th>Reduction</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-history-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
             <!-- History Tab -->
             <div class="tab-pane fade" id="history-tab-pane" role="tabpanel">
                 <div class="mt-3">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-danger" id="clear-history-btn">Clear All History</button>
+                    </div>
                     <table class="table table-hover">
                         <thead>
                             <tr>
@@ -238,6 +285,22 @@
                     </form>
                 </div>
             </div>
+            <!-- Cleanup Tab -->
+            <div class="tab-pane fade" id="cleanup-tab-pane" role="tabpanel">
+                <div class="mt-3">
+                    <h4>Stale File Cleanup</h4>
+                    <p class="text-body-secondary">Find and delete temporary (`.tmp_`) and lock (`.lock`) files left behind by crashed or improperly stopped workers. Files are considered stale if they haven't been modified in the last 30 minutes.</p>
+                    <button class="btn btn-primary" id="scan-stale-btn">Scan for Stale Files</button>
+                    <hr>
+                    <div id="stale-files-results" class="d-none">
+                        <h5>Found Stale Files</h5>
+                        <div id="stale-files-list" class="mb-3" style="max-height: 400px; overflow-y: auto;">
+                            <!-- Stale files will be listed here -->
+                        </div>
+                        <button class="btn btn-danger" id="delete-stale-btn" disabled>Delete Selected Files</button>
+                    </div>
+                </div>
+            </div>
         </div>
 {% endblock %}
 
@@ -267,6 +330,21 @@
         </div>
     </div>
 
+    <!-- Per-Node Options Modal -->
+    <div class="modal fade" id="nodeOptionsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="nodeOptionsModalTitle">Node Options</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>More per-node options will be available here in the future.</p>
+                    <button id="quit-node-btn" class="btn btn-danger w-100">Quit Worker Process</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         // Function to create an HTML element for a single node
         function createNodeCard(node) {
@@ -276,9 +354,9 @@
                 <div class="card-header fs-5 d-flex justify-content-between align-items-center">
                     <span>${node.hostname}</span>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="showNodeOptions('${node.hostname}')">Options</button>
-                        <button class="btn btn-sm btn-success" onclick="startNode('${node.hostname}')" ${node.status !== 'idle' ? 'disabled' : ''}>Start</button>
-                        <button class="btn btn-sm btn-danger" onclick="stopNode('${node.hostname}')" ${node.status === 'idle' ? 'disabled' : ''}>Stop</button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="showNodeOptions('${node.hostname}')">Options</button>
+                        <button class="btn btn-sm btn-success" onclick="startNode('${node.hostname}')" ${node.status === 'running' || node.status === 'paused' ? 'disabled' : ''}>Start</button>
+                        <button class="btn btn-sm btn-danger" onclick="stopNode('${node.hostname}')" ${node.status === 'idle' || node.status === 'finishing' ? 'disabled' : ''}>Stop</button>
                         <button class="btn btn-sm btn-warning" onclick="pauseResumeNode('${node.hostname}', '${node.status}')" ${node.status === 'idle' ? 'disabled' : ''}>${node.status === 'paused' ? 'Resume' : 'Pause'}</button>
                         <span class="badge bg-info">${node.version || 'N/A'}</span>
                     </div>
@@ -293,7 +371,7 @@
                         </div>
                     ` : `
                         <div class="text-center p-3">
-                            <h5 class="card-title text-muted">${node.status === 'paused' ? 'Paused' : node.file}</h5>
+                            <h5 class="card-title text-muted">${node.status === 'paused' ? 'Paused' : (node.status === 'finishing' ? 'Finishing...' : node.file)}</h5>
                         </div>
                     `}
                 </div>
@@ -384,8 +462,12 @@
                             <td style="word-break: break-all;">${item.filename}</td>
                             <td>${item.hostname}</td>
                             <td><span class="badge text-bg-secondary">${item.codec}</span></td>
-                            <td>${item.original_size_gb} → ${item.new_size_gb}</td>
-                            <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
+                            ${item.status === 'encoding' ? `
+                                <td colspan="2" class="text-center"><span class="badge text-bg-primary">In Progress</span></td>
+                            ` : `
+                                <td>${item.original_size_gb} → ${item.new_size_gb}</td>
+                                <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
+                            `}
                             <td>${item.encoded_at}</td>
                         </tr>
                     `).join('');
@@ -448,16 +530,163 @@
             }
         });
 
-        // Set initial button color on page load
+        // Main update loop that runs every 5 seconds
+        async function mainUpdateLoop() {
+            // Always update the main status (nodes, failures, clock)
+            await updateStatus();
+
+            // Check which tab is active and update its content if needed
+            if (document.querySelector('#stats-tab.active')) {
+                await updateStats();
+            } else if (document.querySelector('#history-tab.active')) {
+                await updateHistory();
+            }
+        }
+
+        // Run initial update on page load
         updateStatus();
 
-        // Run the update function every 5 seconds (5000 milliseconds)
-        setInterval(updateStatus, 5000);
+        // Start the main update loop
+        setInterval(mainUpdateLoop, 5000);
 
         // Update history when the tab is shown
         const historyTab = document.querySelector('#history-tab');
         historyTab.addEventListener('shown.bs.tab', event => {
             updateHistory();
+        });
+
+        // Update stats when the tab is shown
+        const statsTab = document.querySelector('#stats-tab');
+        statsTab.addEventListener('shown.bs.tab', event => {
+            updateStats();
+        });
+
+        // Function to fetch and display stats
+        async function updateStats() {
+            const statsCardsContainer = document.getElementById('stats-cards-container');
+            const statsHistoryBody = document.getElementById('stats-history-table-body');
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+
+                // Update the summary cards
+                statsCardsContainer.innerHTML = `
+                    <div class="col-md-3"><div class="card"><div class="card-body">
+                        <h5 class="card-title">${data.stats.total_files}</h5><p class="card-text text-muted">Files Encoded</p>
+                    </div></div></div>
+                    <div class="col-md-3"><div class="card"><div class="card-body">
+                        <h5 class="card-title">${data.stats.total_original_size_gb} GB</h5><p class="card-text text-muted">Original Size</p>
+                    </div></div></div>
+                    <div class="col-md-3"><div class="card"><div class="card-body">
+                        <h5 class="card-title">${data.stats.total_new_size_gb} GB</h5><p class="card-text text-muted">New Size</p>
+                    </div></div></div>
+                    <div class="col-md-3"><div class="card bg-success text-white"><div class="card-body">
+                        <h5 class="card-title">${data.stats.total_reduction_percent}%</h5><p class="card-text">Average Reduction</p>
+                    </div></div></div>
+                `;
+
+                // Update the history table on the stats page
+                if (data.history && data.history.length > 0) {
+                    statsHistoryBody.innerHTML = data.history.map(item => `
+                        <tr>
+                            <td style="word-break: break-all;">${item.filename}</td>
+                            <td>${item.hostname}</td>
+                            <td><span class="badge text-bg-secondary">${item.codec}</span></td>
+                            <td>${item.original_size_gb} → ${item.new_size_gb}</td>
+                            <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
+                            <td>${item.encoded_at}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    statsHistoryBody.innerHTML = '<tr><td colspan="6" class="text-center">No encoded files found.</td></tr>';
+                }
+
+            } catch (error) {
+                console.error("Failed to fetch stats:", error);
+                statsCardsContainer.innerHTML = '<div class="col-12"><div class="alert alert-danger">Failed to load statistics.</div></div>';
+                statsHistoryBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load history.</td></tr>';
+            }
+        }
+
+        // Function to clear all history
+        document.getElementById('clear-history-btn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to permanently clear the entire transcode history? This action cannot be undone.')) {
+                return;
+            }
+            try {
+                const response = await fetch('/api/history/clear', { method: 'POST' });
+                if (response.ok) {
+                    // Refresh the history table to show it's empty
+                    updateHistory();
+                }
+            } catch (error) {
+                console.error('Error clearing history:', error);
+                alert('An error occurred while trying to clear the history.');
+            }
+        });
+
+        // Add event listener for the cleanup tab
+        const cleanupTab = document.querySelector('#cleanup-tab');
+        cleanupTab.addEventListener('shown.bs.tab', event => {
+            // You could add logic here to auto-scan if desired
+        });
+
+        // Cleanup Tab Logic
+        const scanStaleBtn = document.getElementById('scan-stale-btn');
+        const deleteStaleBtn = document.getElementById('delete-stale-btn');
+        const staleFilesResults = document.getElementById('stale-files-results');
+        const staleFilesList = document.getElementById('stale-files-list');
+
+        scanStaleBtn.addEventListener('click', async () => {
+            scanStaleBtn.disabled = true;
+            scanStaleBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Scanning...';
+            staleFilesList.innerHTML = '';
+            try {
+                const response = await fetch('/api/cleanup/scan');
+                const data = await response.json();
+                staleFilesResults.classList.remove('d-none');
+                if (data.stale_files && data.stale_files.length > 0) {
+                    staleFilesList.innerHTML = data.stale_files.map(file => `
+                        <div class="form-check">
+                            <input class="form-check-input stale-file-checkbox" type="checkbox" value="${file.path}" id="stale-${file.path.replace(/[^a-zA-Z0-9]/g, '')}" checked>
+                            <label class="form-check-label" for="stale-${file.path.replace(/[^a-zA-Z0-9]/g, '')}">
+                                ${file.path} <span class="text-muted">(${file.age})</span>
+                            </label>
+                        </div>
+                    `).join('');
+                    deleteStaleBtn.disabled = false;
+                } else {
+                    staleFilesList.innerHTML = '<p class="text-muted">No stale files found.</p>';
+                    deleteStaleBtn.disabled = true;
+                }
+            } catch (error) {
+                staleFilesList.innerHTML = '<p class="text-danger">Error scanning for files.</p>';
+            } finally {
+                scanStaleBtn.disabled = false;
+                scanStaleBtn.innerHTML = 'Scan for Stale Files';
+            }
+        });
+
+        deleteStaleBtn.addEventListener('click', async () => {
+            const selectedFiles = Array.from(document.querySelectorAll('.stale-file-checkbox:checked')).map(cb => cb.value);
+            if (selectedFiles.length === 0) {
+                alert('Please select files to delete.');
+                return;
+            }
+            if (!confirm(`Are you sure you want to delete ${selectedFiles.length} selected files? This cannot be undone.`)) {
+                return;
+            }
+            try {
+                await fetch('/api/cleanup/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: selectedFiles })
+                });
+                // Rescan after deletion
+                scanStaleBtn.click();
+            } catch (error) {
+                alert('An error occurred while deleting files.');
+            }
         });
     </script>
     <script>
@@ -522,8 +751,37 @@
         }
 
         // Placeholder for future per-node options
+        let nodeOptionsModal = null;
         function showNodeOptions(hostname) {
-            alert(`Per-node options for '${hostname}' are not yet implemented.`);
+            if (!nodeOptionsModal) {
+                nodeOptionsModal = new bootstrap.Modal(document.getElementById('nodeOptionsModal'));
+            }
+            document.getElementById('nodeOptionsModalTitle').innerText = `Options for ${hostname}`;
+            const quitBtn = document.getElementById('quit-node-btn');
+            // Re-assign the onclick event to the button for the specific hostname
+            quitBtn.onclick = () => quitNode(hostname);
+            nodeOptionsModal.show();
+        }
+    </script>
+    <script>
+        // Function to send the 'quit' command to a node
+        async function quitNode(hostname) {
+            if (!confirm(`Are you sure you want to QUIT the worker on '${hostname}'? This will stop the process immediately. The container will likely restart based on Docker policy.`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/nodes/${hostname}/quit`, {
+                    method: 'POST',
+                });
+                const result = await response.json();
+                if (result.success) {
+                    updateStatus(); // Refresh UI to show the node disappearing
+                } else {
+                    alert(`Failed to send quit command to ${hostname}: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error quitting node:', error);
+            }
         }
     </script>
     <script>

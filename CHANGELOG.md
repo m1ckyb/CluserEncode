@@ -1,6 +1,29 @@
-# Changelog
+# [Unreleased]
 
-All notable changes to this project will be documented in this file.
+### Added
+
+## [0.8.6] - 2025-11-20 - History, Stats & Cleanup
+
+### Added
+- **Stats Tab**: A new tab was added to the dashboard to display aggregate statistics, including total files encoded, total original vs. new size, and average space reduction.
+- **Stale File Cleanup**: A new "Cleanup" tab was added to find and delete stale `.lock` and `.tmp_` files left behind by crashed workers.
+- **Advanced History Management**:
+  - The History tab now shows "In Progress" for files currently being encoded.
+  - Added a "Clear All History" button to truncate the history table.
+  - Added the ability to delete individual entries from the history log.
+- **Dynamic Tabs**: The "Stats" and "History" tabs now automatically refresh their content every 5 seconds when active.
+
+### Changed
+- **Redundant File Removal**: The worker no longer writes to local `encoded.list` files, relying solely on the database for history tracking.
+- **History Logging**: The worker now logs a file to the history table with an `encoding` status when it starts a job, and updates it to `completed` upon success.
+
+## [0.8.5] - 2025-11-20 - State Management & UI Stability
+
+### Fixed
+- **UI Stability**: Resolved a long-standing bug where the "Start" and "Stop" buttons would flip incorrectly. When "Stop" is pressed during a transcode, the worker now enters an intermediate `finishing` state. This allows the UI to correctly reflect the worker's intent to stop, enabling the "Start" button to cancel the stop request.
+
+### Bugs
+- **Quit Command Reliability**: The "Quit" command is not always responsive and can be ignored if a worker is in the middle of a long transcode process.
 
 ## [0.8.1] - 2025-11-20 - Granular Control & Advanced Config
 

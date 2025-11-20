@@ -188,3 +188,31 @@ This version focused on giving administrators finer control over the transcoding
   - The pixel width threshold for determining HD content.
   - A configurable list of file extensions for the scanner.
 - **Debug Flag**: The `--debug` command-line flag was re-introduced to the worker for easy local troubleshooting, allowing it to override the database setting and print the full `ffmpeg` command.
+
+## 20. Version 0.8.4 - The Buggy Release
+
+This release was dedicated to fixing several persistent and complex bugs related to worker state management and UI stability.
+
+- **UI Stability Fix**: Resolved a long-standing issue where the "Start" and "Stop" buttons would incorrectly flip after a worker finished a scan. The worker's state reporting was corrected to ensure the UI remains stable and accurately reflects that the worker is idle.
+- **Reliable Quit Command**: Fixed a critical bug where the "Quit" command was unresponsive during an active transcode. The command is now detected within seconds, allowing for an immediate and reliable shutdown of the worker process.
+- **Robust Stop Logic**: The "Stop" command was overhauled to ensure the worker finishes its current file and then correctly returns to and stays in its idle state, preventing it from automatically starting another file.
+
+## 21. Version 0.8.5 - State Management & UI Stability
+
+This release focused on fixing a critical and complex UI stability bug related to worker state transitions.
+
+- **Robust State Management**: Introduced a new intermediate `finishing` state for the worker. When a user presses "Stop" during an active transcode, the worker enters this state instead of immediately trying to become idle.
+- **UI Stability Fix**: The dashboard UI was updated to recognize the `finishing` state. This resolves a long-standing bug where the "Start" and "Stop" buttons would flip incorrectly. The UI now correctly shows that the worker is busy but will be stopping, and allows the user to press "Start" again to cancel the stop request.
+
+## 22. Version 0.8.6 - History, Stats & Cleanup
+
+This release focused on adding new data management and statistical overview features to the dashboard, while also improving the underlying worker logic.
+
+- **Stats Tab**: A new "Stats" tab was created to provide a high-level overview of the cluster's performance. It includes cards for total files encoded, total original vs. new size (in GB), and the average space reduction percentage.
+- **Stale File Cleanup**: A "Cleanup" tab was added to the UI. This feature allows an administrator to scan the media directory for stale temporary (`.tmp_`) and lock (`.lock`) files left behind by crashed workers and delete them safely through the dashboard.
+- **Advanced History Management**:
+  - The History tab now correctly displays an "In Progress" status for files that are currently being transcoded.
+  - A "Clear All History" button was added to allow for easy database maintenance.
+  - Users can now delete individual entries from the history log.
+- **Dynamic UI**: The "Stats" and "History" tabs were made dynamic, automatically refreshing their content every 5 seconds when they are the active tab.
+- **Modernized Worker Logging**: The worker script was updated to no longer use redundant `encoded.list` files, relying entirely on the central database for tracking encode history.

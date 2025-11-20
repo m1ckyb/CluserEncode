@@ -373,6 +373,89 @@ def api_history():
         item['reduction_percent'] = round((1 - item['new_size'] / item['original_size']) * 100, 1) if item['original_size'] > 0 else 0
     return jsonify(history=history, db_error=db_error)
 
+@app.route('/api/history/clear', methods=['POST'])
+def clear_history():
+    """Truncates the encoded_files table to clear all history."""
+    try:
+        # Assuming you have a function like get_db() to get a database connection
+        db = get_db() 
+        with db.cursor() as cur:
+            # TRUNCATE is faster than DELETE for clearing a whole table
+            # RESTART IDENTITY resets the ID counter for the next entry
+            cur.execute("TRUNCATE TABLE encoded_files RESTART IDENTITY;")
+        db.commit()
+        return jsonify(success=True)
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error clearing history: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
+@app.route('/api/history/delete/<int:entry_id>', methods=['POST'])
+def delete_history_entry(entry_id):
+    """Deletes a single entry from the encoded_files table."""
+    try:
+        db = get_db()
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM encoded_files WHERE id = %s", (entry_id,))
+        db.commit()
+        if cur.rowcount == 0:
+            return jsonify(success=False, error="Entry not found."), 404
+        return jsonify(success=True)
+    except Exception as e:
+        print(f"Error deleting history entry {entry_id}: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
+@app.route('/api/stats')
+def api_stats():
+    """Returns aggregate statistics and recent history."""
+    db = get_db()
+    stats = {}
+    history = []
+    db_error = None
+
+    if db is None:
+        db_error = "Cannot connect to the PostgreSQL database."
+        return jsonify(stats={}, history=[], db_error=db_error)
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            # Get aggregate stats for completed files
+            cur.execute("""
+                SELECT
+                    COUNT(*) AS total_files,
+                    SUM(original_size) AS total_original_size,
+                    SUM(new_size) AS total_new_size
+                FROM encoded_files
+                WHERE status = 'completed'
+            """)
+            agg_stats = cur.fetchone()
+
+            # Get recent history (same as history tab)
+            cur.execute("SELECT * FROM encoded_files WHERE status = 'completed' ORDER BY encoded_at DESC LIMIT 100")
+            history = cur.fetchall()
+
+        # Process stats for display
+        total_original = agg_stats['total_original_size'] or 0
+        total_new = agg_stats['total_new_size'] or 0
+        stats = {
+            'total_files': agg_stats['total_files'] or 0,
+            'total_original_size_gb': round(total_original / (1024**3), 2),
+            'total_new_size_gb': round(total_new / (1024**3), 2),
+            'total_reduction_percent': round((1 - total_new / total_original) * 100, 1) if total_original > 0 else 0
+        }
+
+        # Process history for display
+        for item in history:
+            item['encoded_at'] = item['encoded_at'].strftime('%Y-%m-%d %H:%M:%S')
+            item['original_size_gb'] = round(item['original_size'] / (1024**3), 2)
+            item['new_size_gb'] = round(item['new_size'] / (1024**3), 2)
+            item['reduction_percent'] = round((1 - item['new_size'] / item['original_size']) * 100, 1) if item['original_size'] > 0 else 0
+
+    except Exception as e:
+        db_error = f"Database query failed: {e}"
+
+    return jsonify(stats=stats, history=history, db_error=db_error)
+
 if __name__ == '__main__':
     # Use host='0.0.0.0' to make the app accessible on your network
     app.run(debug=True, host='0.0.0.0', port=5000)
