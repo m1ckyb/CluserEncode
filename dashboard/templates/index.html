@@ -418,8 +418,12 @@
                             <td style="word-break: break-all;">${item.filename}</td>
                             <td>${item.hostname}</td>
                             <td><span class="badge text-bg-secondary">${item.codec}</span></td>
-                            <td>${item.original_size_gb} → ${item.new_size_gb}</td>
-                            <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
+                            ${item.status === 'encoding' ? `
+                                <td colspan="2" class="text-center"><span class="badge text-bg-primary">In Progress</span></td>
+                            ` : `
+                                <td>${item.original_size_gb} → ${item.new_size_gb}</td>
+                                <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
+                            `}
                             <td>${item.encoded_at}</td>
                         </tr>
                     `).join('');
