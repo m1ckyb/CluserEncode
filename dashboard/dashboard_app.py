@@ -390,6 +390,21 @@ def clear_history():
         print(f"Error clearing history: {e}")
         return jsonify(success=False, error=str(e)), 500
 
+@app.route('/api/history/delete/<int:entry_id>', methods=['POST'])
+def delete_history_entry(entry_id):
+    """Deletes a single entry from the encoded_files table."""
+    try:
+        db = get_db()
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM encoded_files WHERE id = %s", (entry_id,))
+        db.commit()
+        if cur.rowcount == 0:
+            return jsonify(success=False, error="Entry not found."), 404
+        return jsonify(success=True)
+    except Exception as e:
+        print(f"Error deleting history entry {entry_id}: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
 @app.route('/api/stats')
 def api_stats():
     """Returns aggregate statistics and recent history."""

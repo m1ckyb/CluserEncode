@@ -32,9 +32,6 @@
                 <button class="nav-link active" id="nodes-tab" data-bs-toggle="tab" data-bs-target="#nodes-tab-pane" type="button" role="tab">Active Nodes</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats-tab-pane" type="button" role="tab">Stats</button>
-            </li>
-            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="cleanup-tab" data-bs-toggle="tab" data-bs-target="#cleanup-tab-pane" type="button" role="tab">Cleanup</button>
             </li>
             <li class="nav-item" role="presentation">
@@ -91,44 +88,6 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- Stats Tab -->
-            <div class="tab-pane fade" id="stats-tab-pane" role="tabpanel">
-                <div class="mt-3">
-                    <div class="row text-center g-3" id="stats-cards-container">
-                        <!-- Stat cards will be loaded here by JavaScript -->
-                        <div class="col-12">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <hr class="my-4">
-                    <h5>Recently Encoded Files</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>File</th>
-                                    <th>Node</th>
-                                    <th>Codec</th>
-                                    <th>Size (GB)</th>
-                                    <th>Reduction</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody id="stats-history-table-body">
-                                <tr>
-                                    <td colspan="6" class="text-center">
-                                        <div class="spinner-border spinner-border-sm" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
             <!-- History Tab -->
             <div class="tab-pane fade" id="history-tab-pane" role="tabpanel">
                 <div class="mt-3">
@@ -144,6 +103,7 @@
                                 <th>Size (GB)</th>
                                 <th>Reduction</th>
                                 <th>Date</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="history-table-body"></tbody>
@@ -469,10 +429,15 @@
                                 <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
                             `}
                             <td>${item.encoded_at}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteHistoryEntry(${item.id})" title="Delete this entry">
+                                    &times;
+                                </button>
+                            </td>
                         </tr>
                     `).join('');
                 } else {
-                    historyBody.innerHTML = '<tr><td colspan="6" class="text-center">No encoded files found.</td></tr>';
+                    historyBody.innerHTML = '<tr><td colspan="7" class="text-center">No encoded files found.</td></tr>';
                 }
             } catch (error) {
                 console.error("Failed to fetch history:", error);
@@ -542,56 +507,23 @@
             updateHistory();
         });
 
-        // Update stats when the tab is shown
-        const statsTab = document.querySelector('#stats-tab');
-        statsTab.addEventListener('shown.bs.tab', event => {
-            updateStats();
-        });
-
-        // Function to fetch and display stats
-        async function updateStats() {
-            const statsCardsContainer = document.getElementById('stats-cards-container');
-            const statsHistoryBody = document.getElementById('stats-history-table-body');
+        // Function to delete a single history entry
+        async function deleteHistoryEntry(entryId) {
+            if (!confirm(`Are you sure you want to permanently delete this history entry? This cannot be undone.`)) {
+                return;
+            }
             try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
-
-                // Update the summary cards
-                statsCardsContainer.innerHTML = `
-                    <div class="col-md-3"><div class="card"><div class="card-body">
-                        <h5 class="card-title">${data.stats.total_files}</h5><p class="card-text text-muted">Files Encoded</p>
-                    </div></div></div>
-                    <div class="col-md-3"><div class="card"><div class="card-body">
-                        <h5 class="card-title">${data.stats.total_original_size_tb} TB</h5><p class="card-text text-muted">Original Size</p>
-                    </div></div></div>
-                    <div class="col-md-3"><div class="card"><div class="card-body">
-                        <h5 class="card-title">${data.stats.total_new_size_tb} TB</h5><p class="card-text text-muted">New Size</p>
-                    </div></div></div>
-                    <div class="col-md-3"><div class="card bg-success text-white"><div class="card-body">
-                        <h5 class="card-title">${data.stats.total_reduction_percent}%</h5><p class="card-text">Average Reduction</p>
-                    </div></div></div>
-                `;
-
-                // Update the history table on the stats page
-                if (data.history && data.history.length > 0) {
-                    statsHistoryBody.innerHTML = data.history.map(item => `
-                        <tr>
-                            <td style="word-break: break-all;">${item.filename}</td>
-                            <td>${item.hostname}</td>
-                            <td><span class="badge text-bg-secondary">${item.codec}</span></td>
-                            <td>${item.original_size_gb} → ${item.new_size_gb}</td>
-                            <td><span class="badge text-bg-success">${item.reduction_percent}%</span></td>
-                            <td>${item.encoded_at}</td>
-                        </tr>
-                    `).join('');
+                const response = await fetch(`/api/history/delete/${entryId}`, {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    // Refresh the history table to show the item has been removed
+                    updateHistory();
                 } else {
-                    statsHistoryBody.innerHTML = '<tr><td colspan="6" class="text-center">No encoded files found.</td></tr>';
+                    alert('Failed to delete history entry.');
                 }
-
             } catch (error) {
-                console.error("Failed to fetch stats:", error);
-                statsCardsContainer.innerHTML = '<div class="col-12"><div class="alert alert-danger">Failed to load statistics.</div></div>';
-                statsHistoryBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load history.</td></tr>';
+                console.error('Error deleting history entry:', error);
             }
         }
 
