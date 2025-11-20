@@ -32,13 +32,13 @@
                 <button class="nav-link active" id="nodes-tab" data-bs-toggle="tab" data-bs-target="#nodes-tab-pane" type="button" role="tab">Active Nodes</button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="cleanup-tab" data-bs-toggle="tab" data-bs-target="#cleanup-tab-pane" type="button" role="tab">Cleanup</button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-tab-pane" type="button" role="tab">History</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="options-tab" data-bs-toggle="tab" data-bs-target="#options-tab-pane" type="button" role="tab">Options</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="cleanup-tab" data-bs-toggle="tab" data-bs-target="#cleanup-tab-pane" type="button" role="tab">Cleanup</button>
             </li>
         </ul>
 
@@ -492,6 +492,12 @@
         const historyTab = document.querySelector('#history-tab');
         historyTab.addEventListener('shown.bs.tab', event => {
             updateHistory();
+        });
+
+        // Add event listener for the cleanup tab
+        const cleanupTab = document.querySelector('#cleanup-tab');
+        cleanupTab.addEventListener('shown.bs.tab', event => {
+            // You could add logic here to auto-scan if desired
         });
 
         // Cleanup Tab Logic
