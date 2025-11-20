@@ -687,6 +687,12 @@ def worker_loop(root, db, cli_args):
                         db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
                         stop_command_received = True
                         break # Exit the file loop (for fname in filenames)
+                    # Also check for a quit command after each file.
+                    if db.get_node_command(HOSTNAME) == 'quit':
+                        if is_debug_mode: print("\nDEBUG: 'quit' command detected after file. Shutting down.")
+                        STOP_EVENT.set()
+                        stop_command_received = True # Use this to break outer loops
+                        break
                     
                     if args.debug: print(f"DEBUG: Lock Released: {fname}")
             if 'stop_command_received' in locals() and stop_command_received: break
