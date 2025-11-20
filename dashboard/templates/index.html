@@ -292,8 +292,8 @@
                     <span>${node.hostname}</span>
                     <div>
                         <button class="btn btn-sm btn-outline-secondary me-2" onclick="showNodeOptions('${node.hostname}')">Options</button>
-                        <button class="btn btn-sm btn-success" onclick="startNode('${node.hostname}')" ${node.status !== 'idle' ? 'disabled' : ''}>Start</button>
-                        <button class="btn btn-sm btn-danger" onclick="stopNode('${node.hostname}')" ${node.status === 'idle' ? 'disabled' : ''}>Stop</button>
+                        <button class="btn btn-sm btn-success" onclick="startNode('${node.hostname}')" ${node.status === 'running' || node.status === 'paused' ? 'disabled' : ''}>Start</button>
+                        <button class="btn btn-sm btn-danger" onclick="stopNode('${node.hostname}')" ${node.status === 'idle' || node.status === 'finishing' ? 'disabled' : ''}>Stop</button>
                         <button class="btn btn-sm btn-warning" onclick="pauseResumeNode('${node.hostname}', '${node.status}')" ${node.status === 'idle' ? 'disabled' : ''}>${node.status === 'paused' ? 'Resume' : 'Pause'}</button>
                         <span class="badge bg-info">${node.version || 'N/A'}</span>
                     </div>
@@ -308,7 +308,7 @@
                         </div>
                     ` : `
                         <div class="text-center p-3">
-                            <h5 class="card-title text-muted">${node.status === 'paused' ? 'Paused' : node.file}</h5>
+                            <h5 class="card-title text-muted">${node.status === 'paused' ? 'Paused' : (node.status === 'finishing' ? 'Finishing...' : node.file)}</h5>
                         </div>
                     `}
                 </div>
