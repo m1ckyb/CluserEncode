@@ -673,18 +673,24 @@ def worker_loop(root, db, cli_args):
         if wait_seconds <= 0:
             wait_seconds = 60 # Default to 60 seconds if delay is 0 or less.
 
-        # Before waiting, check if a stop command has been issued.
-        command = db.get_node_command(HOSTNAME)
-        if command == 'idle':
-            # This is the 'Stop' command
-            if is_debug_mode:
-                print("DEBUG: Received command from dashboard: 'stop'. Shutting down worker.")
-            STOP_EVENT.set() # Signal the entire thread to terminate
-            break # Exit the processing loop
-        
         current_time = datetime.now().strftime('%H:%M:%S')
         print(f"\n{current_time} 🏁 Scan complete. Next scan in {wait_seconds / 60:.0f} minute(s)...")
-        STOP_EVENT.wait(wait_seconds)
+        
+        # --- Responsive Wait Loop ---
+        # Instead of one long wait, we wait in small chunks (e.g., 5 seconds)
+        # and check for the stop command in between each chunk.
+        time_waited = 0
+        while time_waited < wait_seconds:
+            # Check for the stop command every 5 seconds.
+            if db.get_node_command(HOSTNAME) == 'idle':
+                if is_debug_mode:
+                    print("\nDEBUG: Received 'stop' command during wait. Shutting down worker.")
+                STOP_EVENT.set() # Signal the main loop to terminate
+                break # Exit the wait loop
+            
+            time.sleep(5)
+            time_waited += 5
+        if STOP_EVENT.is_set(): break # Exit the main worker loop if stop was triggered
 
     print("\nWatcher stopped.")
     db.clear_node() 
