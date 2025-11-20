@@ -471,20 +471,22 @@ def worker_loop(root, db, cli_args):
 
     print(f"⚙️  Detected Encoder: {hw_settings['codec']}")
 
-    # --- Initial State: Idle ---
-    # The node joins the cluster in an idle state and waits for a 'start' command.
-    db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
-    while not STOP_EVENT.is_set():
-        command = db.get_node_command(HOSTNAME)
-        if command == 'running':
-            # This is the 'Start' command
-            if is_debug_mode:
-                print("DEBUG: Received command from dashboard: 'start'")
-            break
-        STOP_EVENT.wait(5) # Check for command every 5 seconds
-
     # --- Main Watcher Loop ---
+    # This outer loop allows the worker to return to an idle state after being stopped.
     while not STOP_EVENT.is_set():
+
+        # --- Initial State: Idle ---
+        # The node joins the cluster (or returns to) an idle state and waits for a 'start' command.
+        db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
+        while not STOP_EVENT.is_set():
+            command = db.get_node_command(HOSTNAME)
+            if command == 'running':
+                # This is the 'Start' command
+                if is_debug_mode:
+                    print("DEBUG: Received command from dashboard: 'start'")
+                break # Exit idle loop and start scanning
+            time.sleep(5) # Check for command every 5 seconds
+
         files_processed_this_scan = 0
 
         # Fetch the latest settings at the start of each full scan
@@ -679,18 +681,19 @@ def worker_loop(root, db, cli_args):
         # --- Responsive Wait Loop ---
         # Instead of one long wait, we wait in small chunks (e.g., 5 seconds)
         # and check for the stop command in between each chunk.
+        stop_command_received = False
         time_waited = 0
         while time_waited < wait_seconds:
             # Check for the stop command every 5 seconds.
             if db.get_node_command(HOSTNAME) == 'idle':
                 if is_debug_mode:
-                    print("\nDEBUG: Received 'stop' command during wait. Shutting down worker.")
-                STOP_EVENT.set() # Signal the main loop to terminate
+                    print("\nDEBUG: Received 'stop' command. Returning to idle state.")
+                stop_command_received = True
                 break # Exit the wait loop
             
             time.sleep(5)
             time_waited += 5
-        if STOP_EVENT.is_set(): break # Exit the main worker loop if stop was triggered
+        if stop_command_received: break # Exit the scan loop and return to the outer idle loop
 
     print("\nWatcher stopped.")
     db.clear_node() 
