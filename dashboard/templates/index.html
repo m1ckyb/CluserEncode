@@ -91,6 +91,9 @@
             <!-- History Tab -->
             <div class="tab-pane fade" id="history-tab-pane" role="tabpanel">
                 <div class="mt-3">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-danger" id="clear-history-btn">Clear All History</button>
+                    </div>
                     <table class="table table-hover">
                         <thead>
                             <tr>
@@ -496,6 +499,23 @@
         const historyTab = document.querySelector('#history-tab');
         historyTab.addEventListener('shown.bs.tab', event => {
             updateHistory();
+        });
+
+        // Function to clear all history
+        document.getElementById('clear-history-btn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to permanently clear the entire transcode history? This action cannot be undone.')) {
+                return;
+            }
+            try {
+                const response = await fetch('/api/history/clear', { method: 'POST' });
+                if (response.ok) {
+                    // Refresh the history table to show it's empty
+                    updateHistory();
+                }
+            } catch (error) {
+                console.error('Error clearing history:', error);
+                alert('An error occurred while trying to clear the history.');
+            }
         });
 
         // Add event listener for the cleanup tab

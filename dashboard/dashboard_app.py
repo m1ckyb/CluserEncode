@@ -373,6 +373,23 @@ def api_history():
         item['reduction_percent'] = round((1 - item['new_size'] / item['original_size']) * 100, 1) if item['original_size'] > 0 else 0
     return jsonify(history=history, db_error=db_error)
 
+@app.route('/api/history/clear', methods=['POST'])
+def clear_history():
+    """Truncates the encoded_files table to clear all history."""
+    try:
+        # Assuming you have a function like get_db() to get a database connection
+        db = get_db() 
+        with db.cursor() as cur:
+            # TRUNCATE is faster than DELETE for clearing a whole table
+            # RESTART IDENTITY resets the ID counter for the next entry
+            cur.execute("TRUNCATE TABLE encoded_files RESTART IDENTITY;")
+        db.commit()
+        return jsonify(success=True)
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error clearing history: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
 if __name__ == '__main__':
     # Use host='0.0.0.0' to make the app accessible on your network
     app.run(debug=True, host='0.0.0.0', port=5000)
