@@ -429,10 +429,16 @@ def get_cq_value(width, hw_type):
 def worker_loop(root, db):
     print(f"🚀 Node Online: {HOSTNAME}")
 
+    # --- Initial Hardware Detection ---
+    # Fetch settings once at the start to determine which hardware to probe.
+    initial_settings = db.get_worker_settings()
+    accel_mode = initial_settings.get('hardware_acceleration', 'auto')
+    hw_settings = detect_hardware_settings(accel_mode)
+    print(f"⚙️  Detected Encoder: {hw_settings['codec']}")
+
     # --- Initial State: Idle ---
     # The node joins the cluster in an idle state and waits for a 'start' command.
     db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
-    print("Node is in 'idle' state, awaiting 'start' command from the dashboard.")
     while not STOP_EVENT.is_set():
         command = db.get_node_command(HOSTNAME)
         if command == 'running':
@@ -463,7 +469,6 @@ def worker_loop(root, db):
             clean_failures=settings_raw.get('clean_failures', 'false').lower() == 'true',
             debug=settings_raw.get('debug', 'false').lower() == 'true'
         )
-        hw_settings = detect_hardware_settings(args.hardware_acceleration)
 
         # Report that the node is starting a scan
         db.update_heartbeat("Scanning for files...", "N/A", 0, "0", VERSION, status='running')

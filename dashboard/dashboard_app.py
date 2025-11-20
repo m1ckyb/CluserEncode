@@ -168,9 +168,19 @@ def set_node_status(hostname, status):
     try:
         with db.cursor() as cur:
             cur.execute(
-                "UPDATE active_nodes SET status = %s, updated_at = NOW() WHERE hostname = %s",
+                "UPDATE active_nodes SET status = %s, updated_at = NOW() WHERE hostname = %s;",
                 (status, hostname)
             )
+            # The above command will not fail if the node doesn't exist, but it also won't update anything.
+            # We check rowcount to see if a change was made.
+            if cur.rowcount == 0:
+                # If no rows were updated, it means the node isn't in the table yet.
+                # This can happen if a worker is stopped before its first heartbeat.
+                # We'll insert it with the desired status.
+                cur.execute(
+                    "INSERT INTO active_nodes (hostname, status, file, last_updated) VALUES (%s, %s, 'N/A', NOW()) ON CONFLICT (hostname) DO NOTHING;",
+                    (hostname, status)
+                )
         db.commit()
     except Exception as e:
         db_error = f"Database query failed: {e}"
