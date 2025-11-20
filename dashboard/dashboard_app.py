@@ -2,7 +2,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from flask import Flask, render_template, g
+from flask import Flask, render_template, g, request, flash, redirect, url_for
 from flask import jsonify
 # Check for Postgres Driver
 try:
@@ -20,6 +20,10 @@ except ImportError:
 
 app = Flask(__name__)
 
+# A secret key is required for session management (e.g., for flash messages)
+# It's recommended to set this as an environment variable in production.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "a-super-secret-key-for-dev")
+
 # Use the same DB config as the worker script
 # It is recommended to use environment variables for sensitive data
 DB_CONFIG = {
@@ -28,6 +32,14 @@ DB_CONFIG = {
     "password": os.environ.get("DB_PASSWORD"),
     "dbname": os.environ.get("DB_NAME", "transcode_cluster")
 }
+
+def get_project_version():
+    """Reads the version from the root VERSION.txt file."""
+    try:
+        version_file = os.path.join(os.path.dirname(__file__), '..', 'VERSION.txt')
+        return open(version_file, 'r').read().strip()
+    except FileNotFoundError:
+        return "unknown"
 
 # ===========================
 # Database Layer
@@ -113,6 +125,75 @@ def clear_failed_files():
     except Exception as e:
         db_error = f"Database query failed: {e}"
     return db_error
+
+def get_worker_settings():
+    """Fetches all worker settings from the database."""
+    db = get_db()
+    settings = {}
+    db_error = None
+    if db is None:
+        db_error = "Cannot connect to the PostgreSQL database."
+        return settings, db_error
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT key, value, description FROM worker_settings")
+            for row in cur.fetchall():
+                settings[row['key']] = row
+    except Exception as e:
+        db_error = f"Database query failed: {e}"
+    return settings, db_error
+
+def update_worker_setting(key, value):
+    """Updates a specific worker setting in the database."""
+    db = get_db()
+    db_error = None
+    if db is None:
+        db_error = "Cannot connect to the PostgreSQL database."
+        return False, db_error
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE worker_settings SET value = %s, updated_at = NOW() WHERE key = %s",
+                (value, key)
+            )
+        db.commit()
+    except Exception as e:
+        db_error = f"Database query failed: {e}"
+        try:
+            db.rollback()
+        except:
+            pass
+        return False, db_error
+    return True, None
+
+def set_node_status(hostname, status):
+    """Sets the status of a specific node (e.g., to 'running')."""
+    db = get_db()
+    db_error = None
+    if db is None:
+        db_error = "Cannot connect to the PostgreSQL database."
+        return False, db_error
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE active_nodes SET status = %s, last_updated = NOW() WHERE hostname = %s;",
+                (status, hostname)
+            )
+            # The above command will not fail if the node doesn't exist, but it also won't update anything.
+            # We check rowcount to see if a change was made.
+            if cur.rowcount == 0:
+                # If no rows were updated, it means the node isn't in the table yet.
+                # This can happen if a worker is stopped before its first heartbeat.
+                # We'll insert it with the desired status.
+                cur.execute(
+                    "INSERT INTO active_nodes (hostname, status, file, last_updated) VALUES (%s, %s, 'N/A', NOW()) ON CONFLICT (hostname) DO NOTHING;",
+                    (hostname, status)
+                )
+        db.commit()
+    except Exception as e:
+        db_error = f"Database query failed: {e}"
+        return False, db_error
+    return True, None
 # ===========================
 # History Functions
 # ===========================
@@ -139,8 +220,10 @@ def get_history():
 @app.route('/')
 def dashboard():
     """Renders the main dashboard page."""
+    # Fetch cluster status and worker settings
     nodes, fail_count, db_error = get_cluster_status()
-    
+    settings, settings_db_error = get_worker_settings()
+
     # Add a 'color' key for easy templating
     for node in nodes:
         codec = node.get('codec', '')
@@ -155,9 +238,58 @@ def dashboard():
         'index.html', 
         nodes=nodes, 
         fail_count=fail_count, 
-        db_error=db_error,
-        last_updated=datetime.now().strftime('%H:%M:%S')
+        db_error=db_error or settings_db_error, # Show error from either query
+        settings=settings,
+        last_updated=datetime.now().strftime('%H:%M:%S'),
+        version=get_project_version()
     )
+
+@app.route('/options', methods=['GET', 'POST'])
+def options():
+    """
+    Handles the form submission for worker settings from the main dashboard.
+    The GET method is no longer used as the form is on the main page.
+    """
+    if request.method == 'POST':
+        # A dictionary to hold all settings from the form
+        settings_to_update = {
+            'rescan_delay_minutes': request.form.get('rescan_delay_minutes', '5'),
+            'min_length': request.form.get('min_length', '1.5'),
+            'backup_directory': request.form.get('backup_directory', ''),
+            'hardware_acceleration': request.form.get('hardware_acceleration', 'auto'),
+            # Checkboxes return 'true' if checked, otherwise they are not in the form data
+            'recursive_scan': 'true' if 'recursive_scan' in request.form else 'false',
+            'skip_encoded_folder': 'true' if 'skip_encoded_folder' in request.form else 'false',
+            'keep_original': 'true' if 'keep_original' in request.form else 'false',
+            'allow_hevc': 'true' if 'allow_hevc' in request.form else 'false',
+            'allow_av1': 'true' if 'allow_av1' in request.form else 'false',
+            'auto_update': 'true' if 'auto_update' in request.form else 'false',
+            'clean_failures': 'true' if 'clean_failures' in request.form else 'false',
+            'debug': 'true' if 'debug' in request.form else 'false',
+            # Advanced settings
+            'nvenc_cq_hd': request.form.get('nvenc_cq_hd', '32'),
+            'nvenc_cq_sd': request.form.get('nvenc_cq_sd', '28'),
+            'vaapi_cq_hd': request.form.get('vaapi_cq_hd', '28'),
+            'vaapi_cq_sd': request.form.get('vaapi_cq_sd', '24'),
+            'cpu_cq_hd': request.form.get('cpu_cq_hd', '28'),
+            'cpu_cq_sd': request.form.get('cpu_cq_sd', '24'),
+            'cq_width_threshold': request.form.get('cq_width_threshold', '1900'),
+            'extensions': request.form.get('extensions', '.mkv,.mp4'),
+        }
+
+        errors = []
+        for key, value in settings_to_update.items():
+            success, error = update_worker_setting(key, value)
+            if not success:
+                errors.append(error)
+
+        if not errors:
+            flash('Worker settings have been updated successfully!', 'success')
+        else:
+            flash(f'Failed to update some settings: {", ".join(errors)}', 'danger')
+    
+    # Redirect back to the main dashboard page after handling the POST request.
+    return redirect(url_for('dashboard'))
 
 @app.route('/api/status')
 def api_status():
@@ -196,6 +328,38 @@ def api_clear_failures():
     if db_error:
         return jsonify(success=False, error=db_error), 500
     return jsonify(success=True, message="Failed files log has been cleared.")
+
+@app.route('/api/nodes/<hostname>/start', methods=['POST'])
+def api_start_node(hostname):
+    """API endpoint to send a 'start' command to a node."""
+    success, error = set_node_status(hostname, 'running')
+    if not success:
+        return jsonify(success=False, error=error), 500
+    return jsonify(success=True, message=f"Start command sent to node '{hostname}'.")
+
+@app.route('/api/nodes/<hostname>/stop', methods=['POST'])
+def api_stop_node(hostname):
+    """API endpoint to send a 'stop' (go to idle) command to a node."""
+    success, error = set_node_status(hostname, 'idle')
+    if not success:
+        return jsonify(success=False, error=error), 500
+    return jsonify(success=True, message=f"Stop command sent to node '{hostname}'.")
+
+@app.route('/api/nodes/<hostname>/pause', methods=['POST'])
+def api_pause_node(hostname):
+    """API endpoint to send a 'pause' command to a node."""
+    success, error = set_node_status(hostname, 'paused')
+    if not success:
+        return jsonify(success=False, error=error), 500
+    return jsonify(success=True, message=f"Pause command sent to node '{hostname}'.")
+
+@app.route('/api/nodes/<hostname>/resume', methods=['POST'])
+def api_resume_node(hostname):
+    """API endpoint to send a 'resume' command to a node."""
+    success, error = set_node_status(hostname, 'running') # Resuming just sets it back to running
+    if not success:
+        return jsonify(success=False, error=error), 500
+    return jsonify(success=True, message=f"Resume command sent to node '{hostname}'.")
 
 @app.route('/api/history', methods=['GET'])
 def api_history():

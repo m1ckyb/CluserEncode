@@ -73,3 +73,118 @@ This document summarizes the significant progress made on the Transcode Cluster 
 
 - **Project Restructuring**: The project was reorganized into a clean, modular structure with `dashboard/` and `worker/` subdirectories, each containing its own `Dockerfile` and `requirements.txt`.
 - **Versioning**: Implemented a clear versioning scheme (`0.3.0`), which is now displayed for each worker in the dashboard UI, providing better visibility into the cluster's state.
+
+## 9. Version 0.4.0 - Dashboard UI Enhancements
+
+This version focused on improving the usability and information density of the web dashboard.
+
+- **FPS Display**: The dashboard now shows the Frames Per Second (FPS) for each active transcoding node.
+- **Dynamic Error Button**: The "View Errors" button is now green when there are no errors and red if errors are present.
+- **Local Timestamp**: The "Updated" timestamp now reflects the user's local browser time.
+- **Application Footer**: Added a footer to the dashboard containing the web UI version and a link to the project's GitHub repository.
+
+
+## 10. Version 0.4.1 - Centralized Versioning & UI Polish
+
+This version focused on improving project maintainability and refining the user interface.
+
+- **Centralized Versioning**: To prevent version discrepancies between components, a single `VERSION.txt` file was created at the project root. The worker script (`transcode.py`) was updated to read its version from this file, ensuring consistency.
+- **UI Polish**: The dashboard footer was enhanced with CSS to be fixed at the bottom of the viewport, using a semi-transparent background and a blur effect to create a modern "glassy" look.
+- **Conditional UI Elements**: The dashboard was made smarter by hiding the "Clear Errors" button when the error count is zero, decluttering the interface.
+
+
+## 11. Version 0.4.2 - Robustness and UI Fixes
+
+This version addressed key usability and deployment flexibility issues.
+
+- **Robust Worker Versioning**: The worker script (`transcode.py`) was improved to handle being run as a standalone file. It now attempts to read the `VERSION.txt` file, but if it fails (e.g., `FileNotFoundError`), it gracefully falls back to using `"standalone"` as its version identifier instead of crashing.
+- **Dashboard Layout Fix**: Fixed a UI bug where the "glassy" fixed footer would overlap and obscure the "View Errors" button. Padding was added to the main body of the page to ensure all content remains accessible.
+
+
+## 12. Version 0.5.0 - Into the Darkness: UI Theming and Layout
+
+This version introduced a major user experience enhancement with a full theming system and significant frontend code refactoring.
+
+- **UI Theme Switcher**: A theme switcher was added to the dashboard, allowing users to select between Light, Dark, and a System-default mode. The chosen theme is persisted in the browser's local storage.
+- **Improved Footer Layout**: The footer was redesigned with a split layout, placing the version information on the bottom-left and the link to the GitHub project on the bottom-right.
+- **Template Refactoring**: The frontend code was made more maintainable by introducing a `base.html` template. This base template now holds the common page structure, the new theme-switching logic, and the footer, while `index.html` extends it to render the main content.
+
+
+## 13. Version 0.6.0 - Command & Control
+
+This version introduced a powerful configuration system, allowing for dynamic control over worker behavior directly from the web UI.
+
+- **Worker Options Page**: A new "Options" page was created in the dashboard, providing a user-friendly interface for changing worker settings.
+- **Database-Driven Configuration**: A new `worker_settings` table was added to the database to store and persist configuration. The worker script was updated to create this table and populate it with default values if it doesn't exist.
+- **Configurable Scan Behavior**:
+  - **Rescan Delay**: Users can now set a delay (0-60 minutes) that workers will wait before starting a new scan after processing files.
+  - **Folder Exclusion**: A toggle was added to enable or disable the skipping of any directory named `encoded`.
+- **Dynamic Worker Logic**: The core worker loop was updated to fetch the latest settings from the database at the beginning of each full scan, allowing for real-time changes to the cluster's behavior without restarting any services.
+
+
+## 14. Version 0.7.0 (Alpha) - The Boring & Broken Update
+
+This release was primarily focused on fixing a cascade of bugs related to the previous feature releases, improving the stability and usability of both the worker and the dashboard.
+
+- **Critical Bug Fixes**:
+  - **Worker Rescan Delay**: Resolved a major bug where the worker would ignore the rescan delay set in the options and always default to a 60-second wait.
+  - **Worker Self-Update**: The update check URL was corrected to point to the `develop` branch, fixing "404 Not Found" errors.
+- **Dashboard Stability and Layout Fixes**:
+  - **Session Crash**: Added a `secret_key` to the Flask application to prevent it from crashing when saving settings on the options page.
+  - **Layout Correction**: Fixed numerous UI bugs, including the broken layout of active node cards and inconsistent headers, by moving the "Updated" timestamp and theme switcher into a globally consistent footer.
+  - **Robustness**: The options page was improved to handle cases where the database settings have not yet been initialized by a worker, preventing it from crashing on a fresh deployment.
+
+## 15. Version 0.7.1 (Alpha) - The Non-Interactive Fix
+
+This small release addressed a critical usability bug with the worker's self-update feature when running inside Docker.
+
+- **Non-Interactive Updates**: The worker's self-update prompt was removed in favor of a non-interactive system. An `--update` command-line flag was added to trigger the update automatically.
+- **Docker Default Behavior**: The `docker-compose.yml` file was updated to include the `--update` flag in the worker's command, making automatic updates the default behavior for containerized deployments. This resolves a bug where the interactive prompt would fail due to terminal line-ending conflicts (`^M`) inside the container.
+
+
+## 16. CI/CD Enhancements & Branching Strategy
+
+- **Branching Model**: Implemented a Git branching model using `main` for production-ready code and `develop` for ongoing development.
+- **Development Workflow**:
+    - The GitHub Actions pipeline is now configured to trigger on every push to the `develop` branch.
+    - This automatically builds and publishes the `dashboard` and `worker` images to GHCR with a `:develop` tag.
+- **Release Workflow**:
+    - Pushing to `main` no longer triggers a build. Instead, a new build is triggered only when a **new release is created** in GitHub.
+    - When a release is created (e.g., `v1.0.0`), the pipeline builds and publishes images with two tags: the specific version number (e.g., `:v1.0.0`) and `:latest`.
+- **Docker Compose Integration**:
+    - The `docker-compose.yml` file was updated to pull pre-built images directly from GHCR instead of building them locally.
+    - It is configured to use the `:latest` tag, ensuring that running `docker-compose up` deploys the most recent official release.
+
+## 17. Version 0.7.2 (Alpha) - CSS Fixes
+
+This version focused on fixing several CSS issues to improve the layout and consistency of the dashboard.
+
+- **Dashboard UI**:
+  - Moved the "View Errors" button into the footer to prevent it from overlapping with other content.
+  - Made the page titles consistent across the dashboard by using `<h1>` tags for all pages.
+  - Removed unnecessary `padding-bottom` from the `body` element.
+
+## 18. Version 0.8.0 - Remote Control & Centralization
+
+This version marks a major milestone in usability and cluster management by centralizing all configuration and control into the web dashboard.
+
+- **Full Remote Control**:
+  - **Node State Management**: Workers now start in a passive `idle` state, waiting for a command from the dashboard.
+  - **Start/Stop Buttons**: The dashboard UI was updated with toggleable "Start" and "Stop" buttons for each node, giving administrators full control over when workers are active.
+- **Centralized Configuration**:
+  - **UI-Driven Settings**: All worker command-line flags (e.g., `--allow-hevc`, `--force-nvidia`, `--min-size`) have been migrated into the "Options" tab of the dashboard.
+  - **Database-Driven Workers**: The worker script was refactored to fetch all its settings from the database upon starting a scan. This dramatically simplifies deployment, as the worker now only needs the media directory path to run.
+- **Improved Hardware Detection**: The hardware probing logic was made more robust to correctly prioritize NVIDIA GPUs, especially in complex environments like Windows Subsystem for Linux (WSL).
+- **Bug Fixes**: Resolved a cascade of bugs related to the new start/stop functionality, ensuring reliable communication between the dashboard and the workers.
+
+## 19. Version 0.8.1 - Granular Control & Advanced Config
+
+This version focused on giving administrators finer control over the transcoding process and individual worker states.
+
+- **Granular Node Control**: The UI was enhanced with individual "Start", "Stop", and "Pause"/"Resume" buttons for each node, providing unambiguous control.
+- **Pause/Resume Functionality**: A core feature was added to allow pausing and resuming of transcodes. The worker now handles `SIGSTOP` and `SIGCONT` signals for the underlying `ffmpeg` process, managed via the dashboard.
+- **Advanced Configuration in UI**: The "Options" page was expanded to include advanced transcoding settings, moving them from hardcoded values into the database. This includes:
+  - Constant Quality (CQ/CRF) values for all encoder types and resolutions.
+  - The pixel width threshold for determining HD content.
+  - A configurable list of file extensions for the scanner.
+- **Debug Flag**: The `--debug` command-line flag was re-introduced to the worker for easy local troubleshooting, allowing it to override the database setting and print the full `ffmpeg` command.
