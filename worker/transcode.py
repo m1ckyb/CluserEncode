@@ -457,6 +457,10 @@ def worker_loop(root, db, cli_args):
     initial_settings = db.get_worker_settings()
     accel_mode = initial_settings.get('hardware_acceleration', 'auto')
     hw_settings = detect_hardware_settings(accel_mode)
+    # Check if command-line debug flag is set. If so, it overrides the DB setting.
+    db_debug = initial_settings.get('debug', 'false').lower() == 'true'
+    is_debug_mode = cli_args.debug or db_debug
+
     print(f"⚙️  Detected Encoder: {hw_settings['codec']}")
 
     # --- Initial State: Idle ---
