@@ -108,6 +108,9 @@ class DatabaseHandler:
                         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='active_nodes' AND column_name='fps') THEN
                             ALTER TABLE active_nodes ADD COLUMN fps INTEGER DEFAULT 0;
                         END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='encoded_files' AND column_name='status') THEN
+                            ALTER TABLE encoded_files ADD COLUMN status VARCHAR(20) DEFAULT 'completed';
+                        END IF;
                     END;
                     $$
                 """)
