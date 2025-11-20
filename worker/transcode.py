@@ -720,6 +720,9 @@ def worker_loop(root, db, cli_args):
             time.sleep(5)
             time_waited += 5
         if stop_command_received or STOP_EVENT.is_set():
+            # If STOP_EVENT is set (from a 'quit' command), we must break the main loop.
+            if STOP_EVENT.is_set():
+                break
             continue # Go to the next iteration of the main loop, which starts at idle.
 
         # When waiting between scans, the node is effectively idle.
