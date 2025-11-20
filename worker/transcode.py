@@ -681,7 +681,8 @@ def worker_loop(root, db, cli_args):
             db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
             break # Exit the processing loop and go back to the initial idle/wait loop.
         
-        print(f"\n🏁 Scan complete. Next scan in {wait_seconds / 60:.0f} minute(s)...")
+        current_time = datetime.now().strftime('%H:%M:%S')
+        print(f"\n{current_time} 🏁 Scan complete. Next scan in {wait_seconds / 60:.0f} minute(s)...")
         STOP_EVENT.wait(wait_seconds)
 
     print("\nWatcher stopped.")
