@@ -319,6 +319,14 @@ def api_start_node(hostname):
         return jsonify(success=False, error=error), 500
     return jsonify(success=True, message=f"Start command sent to node '{hostname}'.")
 
+@app.route('/api/nodes/<hostname>/stop', methods=['POST'])
+def api_stop_node(hostname):
+    """API endpoint to send a 'stop' (go to idle) command to a node."""
+    success, error = set_node_status(hostname, 'idle')
+    if not success:
+        return jsonify(success=False, error=error), 500
+    return jsonify(success=True, message=f"Stop command sent to node '{hostname}'.")
+
 @app.route('/api/history', methods=['GET'])
 def api_history():
     """Returns the encoding history as JSON."""

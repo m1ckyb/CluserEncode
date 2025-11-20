@@ -624,6 +624,13 @@ def worker_loop(root, db):
         # If the delay is 0, we still wait a short time to prevent a tight loop that consumes CPU.
         if wait_seconds <= 0:
             wait_seconds = 60 # Default to 60 seconds if delay is 0 or less.
+
+        # Before waiting, check if a stop command has been issued.
+        command = db.get_node_command(HOSTNAME)
+        if command == 'idle':
+            print("\n⏹️ Stop command received. Returning to idle state.")
+            db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
+            break # Exit the processing loop and go back to the initial idle/wait loop.
         
         print(f"\n🏁 Scan complete. Next scan in {wait_seconds / 60:.0f} minute(s)...")
         STOP_EVENT.wait(wait_seconds)
