@@ -7,6 +7,12 @@
             height: 25px;
             font-size: 0.9rem;
         }
+        /* Flexbox layout to push footer down */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
     </style>
 {% endblock %}
 
@@ -398,9 +404,6 @@
                 // If there are errors, the button is always red.
                 if (failCount > 0) {
                     viewErrorsBtn.classList.add('btn-danger');
-                    failCountBadge.classList.add('text-bg-light');
-                } else {
-                    viewErrorsBtn.classList.add('btn-success');
                     failCountBadge.classList.add('text-bg-light');
                 }
                 // If there are no errors, its color will be set by the updateHistoryAndStats function
