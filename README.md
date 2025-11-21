@@ -1,126 +1,73 @@
-# Transcode Cluster
+# CodecShift
 
-This project creates a distributed video transcoding cluster. Multiple computers (nodes) can work together to process a library of video files, converting them to the more efficient HEVC (H.265) codec. It's designed to be resilient, leveraging a central PostgreSQL database for job coordination and status tracking, with a web-based dashboard for monitoring.
+**CodecShift** is a distributed video transcoding cluster. It allows multiple computers (nodes) to work together to process a library of video files, converting them to the more efficient HEVC (H.265) codec. The entire system is containerized and managed with Docker Compose for easy deployment.
 
 ## Features
 
 *   **Distributed Transcoding:** Run worker scripts on multiple machines to process files in parallel.
 *   **Hardware Acceleration:** Automatically detects and uses NVIDIA (NVENC) and Intel (VAAPI) for fast transcoding, with a fallback to CPU.
-*   **Job Coordination:** A file-based locking mechanism prevents multiple nodes from working on the same file.
-*   **Failure Tracking:** Failed transcodes are logged to the database to prevent repeated attempts on problematic files.
-*   **Web Dashboard:** A Flask-based web interface provides a real-time view of the cluster's status, including active nodes, current progress, and total failed files.
-*   **Flexible Configuration:** Easily configure quality settings, file size minimums, and hardware preferences.
+*   **Centralized Web Dashboard:** A Flask-based UI for real-time monitoring and management.
+    *   **Full Remote Control**: Start, stop, pause, and resume individual worker nodes from the dashboard.
+    *   **Live Stats & History**: View aggregate statistics and a searchable, paginated history of all transcodes.
+    *   **Health Indicators**: At-a-glance node health status based on heartbeat activity.
+    *   **Error Management**: View detailed logs for failed transcodes and clear them from the queue.
+*   **Database-Driven Coordination:** A central PostgreSQL database manages node status, job history, and all worker configurations.
+*   **Dynamic Configuration:** All worker settings, from quality levels to file extensions, are configurable in real-time via the "Options" tab in the UI.
+*   **Containerized & Automated**: The entire stack is orchestrated with Docker Compose, and images are automatically built and published via GitHub Actions.
 
 ## How It Works
 
-The system consists of two main components:
+The system consists of three core services, all managed by Docker Compose:
 
-1.  **Worker (`transcode.py`):** This is the script you run on each machine that will perform the transcoding. It scans a specified folder for video files, checks if they need to be processed (i.e., not already HEVC, not in the failure list), and then uses `ffmpeg` to convert them. It continuously reports its status (heartbeat) to a central database.
+1.  **`db`**: A PostgreSQL database that acts as the central coordinator. It stores node status, configuration, job history, and error logs.
+2.  **`dashboard`**: The Flask web interface for monitoring the status of all workers, managing the cluster, and configuring transcoding options.
+3.  **`worker`**: One or more transcoding nodes that perform the actual file conversion using `ffmpeg`. Workers start in an `idle` state and wait for a "Start" command from the dashboard.
 
-2.  **Web Dashboard (`dashboard_app.py`):** This is a simple Flask web application that queries the database to display the status of all active worker nodes and a count of failed jobs.
+## Deployment with Docker Compose
 
-A **PostgreSQL** database acts as the central brain, storing information about active nodes, their current tasks, and a list of files that have failed to transcode.
+This is the recommended method for running CodecShift.
 
-## Requirements
+### 1. Prerequisites
+*   Docker and Docker Compose installed on your system.
+*   A Personal Access Token (PAT) from GitHub with the `read:packages` scope. This is required to pull the container images from the GitHub Container Registry (GHCR).
 
-*   Python 3
-*   `ffmpeg` installed and available in your system's PATH.
-*   A PostgreSQL database server accessible from all nodes.
-*   Python libraries: `psycopg2-binary`, `Flask`.
-
-## Setup
-
-### 1. Database Setup
-
-On your PostgreSQL server, you need to create a database and a user for the cluster.
-
-```sql
-CREATE DATABASE transcode_cluster;
-CREATE USER transcode WITH PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE transcode_cluster TO transcode;
-```
-
-The necessary tables (`active_nodes`, `failed_files`) will be created automatically the first time a worker script is run.
-
-### 2. Application Setup
-
+### 2. Configuration
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
-    cd CluserEncode
+    git clone https://github.com/m1ckyb/CluserEncode.git
+    cd CodecShift
     ```
 
-2.  **Install Python dependencies:**
-    It's recommended to create a `requirements.txt` file for this.
+2.  **Create an environment file:**
+    Create a file named `.env` in the project root. This file will store your database credentials.
+    ```env
+    # .env
+    POSTGRES_DB=codecshift
+    POSTGRES_USER=transcode
+    POSTGRES_PASSWORD=your_super_secret_password
     ```
-    Flask
-    psycopg2-binary
-    ```
-    Then install them:
+
+3.  **Edit `docker-compose.yml`:**
+    Open the `docker-compose.yml` file and replace `your-github-username` with your actual GitHub username in the `image` definitions for the `dashboard` and `worker` services.
+
+### 3. Running the Cluster
+1.  **Log in to GHCR:**
+    You only need to do this once. Use your GitHub username and the Personal Access Token you created as the password.
     ```bash
-    pip install -r requirements.txt
+    docker login ghcr.io -u YOUR-GITHUB-USERNAME -p YOUR-PERSONAL-ACCESS-TOKEN
     ```
 
-3.  **Configure Database Connection:**
-    Both `transcode.py` and `dashboard_app.py` are configured to read database credentials from environment variables for security. You can also change the default values directly in the scripts if you are running this on a private, secure network.
-
-    **`transcode.py`:**
-    ```python
-    DB_CONFIG = {
-        "host": "192.168.10.120", 
-        "user": "transcode",
-        "password": "password", # Change this or use environment variables
-        "dbname": "transcode_cluster"
-    }
+2.  **Start the cluster:**
+    Place your video files in the `media` directory and start the application stack.
+    ```bash
+    docker-compose up -d
     ```
 
-    **`dashboard_app.py`:**
-    This script is already set up to prioritize environment variables.
-    *   `DB_HOST`
-    *   `DB_USER`
-    *   `DB_PASSWORD`
-    *   `DB_NAME`
+3.  **Access the Dashboard:**
+    Open a web browser and navigate to `http://localhost:5000`. You should see the CodecShift dashboard. From here, you can go to the "Options" tab to configure settings and then start your worker nodes.
 
-## Usage
-
-### Running the Worker Node (`transcode.py`)
-
-Open a terminal on each machine you want to use as a worker and run the `transcode.py` script, pointing it to your media folder.
-
-**Example:**
-
-Scan a folder recursively and process all files larger than 500MB.
+### Scaling the Cluster
+To add more processing power, you can scale the number of worker services. For example, to run 3 workers:
 ```bash
-# On Linux/macOS
-python3 transcode.py "/path/to/your/videos" -R --min 0.5
-
-# On Windows
-python transcode.py "C:\Path\to\your\videos" -R --min 0.5
+docker-compose up -d --scale worker=3
 ```
-
-**Common Arguments:**
-*   `folder`: The root folder to scan for videos.
-*   `-R`, `--recursive`: Scan all subdirectories within the root folder.
-*   `--min <GB>`: Skip files smaller than the specified size in gigabytes (e.g., `--min 1.5`).
-*   `--force-nvidia`: Force the use of NVIDIA's NVENC encoder.
-*   `--force-vaapi`: Force the use of Intel's VAAPI encoder.
-*   `--force-cpu`: Force the use of CPU-based encoding (slow).
-*   `--debug`: Show verbose logging about why files are being skipped.
-
-### Running the Web Dashboard (`dashboard_app.py`)
-
-The dashboard provides a visual overview of the cluster. Before running, set the database password as an environment variable.
-
-**On Windows (Command Prompt):**
-```powershell
-set DB_PASSWORD=your_secure_password
-flask run --host=0.0.0.0 --port=5000
-```
-
-**On Linux/macOS:**
-```bash
-export DB_PASSWORD="your_secure_password"
-flask run --host=0.0.0.0 --port=5000
-```
-
-Now you can open a web browser and navigate to `http://<your-machine-ip>:5000` to see the dashboard.

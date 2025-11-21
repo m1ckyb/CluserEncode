@@ -1,6 +1,6 @@
-# Project Summary - 2025-11-19
+# Project Summary - CodecShift
 
-This document summarizes the significant progress made on the Transcode Cluster project. We have evolved the project from a set of local Python scripts into a fully containerized, continuously integrated, and robust distributed system.
+This document summarizes the significant progress made on the CodecShift project. We have evolved the project from a set of local Python scripts into a fully containerized, continuously integrated, and robust distributed system.
 
 ## 1. Version Control and Initial Setup
 
@@ -217,7 +217,7 @@ This release focused on adding new data management and statistical overview feat
 - **Dynamic UI**: The "Stats" and "History" tabs were made dynamic, automatically refreshing their content when they are the active tab.
 - **Modernized Worker Logging**: The worker script was updated to no longer use redundant `encoded.list` files, relying entirely on the central database for tracking encode history.
 
-## 23. Version 0.8.7 - UI Refinements & Bug Fixes
+## 23. Version 0.9.0 - UI Refinements & Bug Fixes
 
 This version focused heavily on improving the dashboard's user experience with new features and significant bug fixes.
 

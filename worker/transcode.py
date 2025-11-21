@@ -48,7 +48,7 @@ DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "192.168.10.120"),
     "user": os.environ.get("DB_USER", "transcode"),
     "password": os.environ.get("DB_PASSWORD", "password"),
-    "dbname": os.environ.get("DB_NAME", "transcode_cluster")
+    "dbname": os.environ.get("DB_NAME", "codecshift")
 }
 
 # ===========================

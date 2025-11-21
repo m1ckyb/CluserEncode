@@ -2,7 +2,7 @@
 
 ### Added
 
-## [0.8.7] - 2025-11-21 - UI Refinements & Bug Fixes
+## [0.9.0] - 2025-11-21 - UI Refinements & Bug Fixes
 
 ### Added
 - **Node Health Indicator**: Added a colored dot (green/orange/red) next to each worker's hostname to provide an at-a-glance view of its health based on the last heartbeat.
