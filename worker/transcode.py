@@ -732,14 +732,16 @@ def worker_loop(root, db, cli_args):
                         break
                     
                     if args.debug: print(f"DEBUG: Lock Released: {fname}")
-            if 'stop_command_received' in locals() and stop_command_received: break
+            # This check is inside the directory loop. If a stop is received,
+            # we must break out of this loop to proceed to the main check below.
+            if stop_command_received:
+                break
 
-        # Unified wait logic at the end of every scan cycle.
-        # If a stop or quit command was received, we must 'continue' to force the main loop
-        # to restart, which will either enter the idle state or exit completely.
-        if 'stop_command_received' in locals() and stop_command_received:
+        # After the scan is complete (or was broken by a stop command), check if we need to loop.
+        # If a stop/quit was received, 'continue' will force the main `while` loop to restart,
+        # which correctly returns the node to the idle state or exits.
+        if stop_command_received:
             if is_debug_mode: print("\nDEBUG: Stop/Quit command processed. Restarting main loop.")
-            # This 'continue' is the key to preventing a new scan from starting.
             continue # This forces the worker back to the top of the main `while` loop.
 
         # --- Responsive Wait Loop ---
