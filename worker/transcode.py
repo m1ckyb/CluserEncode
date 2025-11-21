@@ -528,12 +528,12 @@ def worker_loop(root, db, cli_args):
             # Send a heartbeat on each loop to keep the node visible in the dashboard while idle.
             db.update_heartbeat("Idle (Awaiting Start)", "N/A", 0, "0", VERSION, status='idle')
 
-            initial_command = db.get_node_command(HOSTNAME)
-            if initial_command == 'quit':
+            # Always fetch the latest command on each iteration of the idle loop.
+            if db.get_node_command(HOSTNAME) == 'quit':
                 if is_debug_mode: print("\nDEBUG: Received 'quit' command while idle. Shutting down.")
                 STOP_EVENT.set()
                 break
-            if initial_command == 'running':
+            if db.get_node_command(HOSTNAME) == 'running':
                 # This is the 'Start' command
                 if is_debug_mode:
                     print("DEBUG: Received command from dashboard: 'start'")
