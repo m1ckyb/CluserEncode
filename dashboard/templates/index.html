@@ -382,18 +382,20 @@
                 const viewErrorsBtn = document.getElementById('view-errors-btn');
                 failCountBadge.innerText = failCount;
                 failCountBadge.classList.remove('text-bg-light', 'text-bg-dark'); // Reset badge color
-
+                
                 // Update clock
                 const clockContainer = document.getElementById('clock-container');
                 if (clockContainer) {
                     clockContainer.innerHTML = `<span class="badge text-bg-secondary fs-6">Updated: ${new Date().toLocaleTimeString()}</span>`;
                 }
-
+                
                 // Update View Errors button color
-                // The badge color is also updated for better contrast
-                viewErrorsBtn.classList.remove('btn-danger', 'btn-success');
+                // Remove all potential color classes first
+                viewErrorsBtn.classList.remove('btn-danger', 'btn-success', 'btn-warning');
                 const clearErrorsBtn = document.getElementById('clear-errors-btn');
                 clearErrorsBtn.style.display = (failCount > 0) ? 'inline-block' : 'none';
+
+                // If there are errors, the button is always red.
                 if (failCount > 0) {
                     viewErrorsBtn.classList.add('btn-danger');
                     failCountBadge.classList.add('text-bg-light');
@@ -401,7 +403,9 @@
                     viewErrorsBtn.classList.add('btn-success');
                     failCountBadge.classList.add('text-bg-light');
                 }
-
+                // If there are no errors, its color will be set by the updateHistoryAndStats function
+                // based on the average reduction percentage.
+                
                 // Update DB error alert
                 const errorAlert = document.getElementById('db-error-alert');
                 if (data.db_error) {
@@ -605,17 +609,33 @@
 
                 // Process Stats
                 const statsData = await statsResponse.json();
+                const reductionPercent = parseFloat(statsData.stats.total_reduction_percent);
+                let reductionColorClass = 'bg-success';
+                if (reductionPercent < 50) {
+                    reductionColorClass = 'bg-danger';
+                } else if (reductionPercent < 75) {
+                    reductionColorClass = 'bg-warning text-dark'; // Add text-dark for better contrast on yellow
+                }
+
+                // Update the "View Errors" button color if there are no errors
+                const failCount = parseInt(document.getElementById('fail-count-badge').innerText, 10);
+                if (failCount === 0) {
+                    const viewErrorsBtn = document.getElementById('view-errors-btn');
+                    viewErrorsBtn.classList.remove('btn-success', 'btn-warning', 'btn-danger');
+                    viewErrorsBtn.classList.add(reductionColorClass.replace('bg-', 'btn-').split(' ')[0]);
+                }
+
                 statsCardsContainer.innerHTML = `
                     <div class="col-md-3"><div class="card"><div class="card-body">
                         <h5 class="card-title">${statsData.stats.total_files}</h5><p class="card-text text-muted">Files Encoded</p>
                     </div></div></div>
                     <div class="col-md-3"><div class="card"><div class="card-body">
-                        <h5 class="card-title">${statsData.stats.total_original_size_gb} GB</h5><p class="card-text text-muted">Original Size</p>
-                    </div></div></div>
-                    <div class="col-md-3"><div class="card"><div class="card-body">
                         <h5 class="card-title">${statsData.stats.total_new_size_gb} GB</h5><p class="card-text text-muted">New Size</p>
                     </div></div></div>
-                    <div class="col-md-3"><div class="card bg-success text-white"><div class="card-body">
+                    <div class="col-md-3"><div class="card"><div class="card-body">
+                        <h5 class="card-title">${statsData.stats.total_original_size_gb} GB</h5><p class="card-text text-muted">Original Size</p>
+                    </div></div></div>
+                    <div class="col-md-3"><div class="card ${reductionColorClass}"><div class="card-body">
                         <h5 class="card-title">${statsData.stats.total_reduction_percent}%</h5><p class="card-text">Average Reduction</p>
                     </div></div></div>
                 `;
