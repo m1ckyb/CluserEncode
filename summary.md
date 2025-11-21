@@ -217,15 +217,18 @@ This release focused on adding new data management and statistical overview feat
 - **Dynamic UI**: The "Stats" and "History" tabs were made dynamic, automatically refreshing their content when they are the active tab.
 - **Modernized Worker Logging**: The worker script was updated to no longer use redundant `encoded.list` files, relying entirely on the central database for tracking encode history.
 
-## 23. Version 0.9.0 - UI Refinements & Bug Fixes
+## 23. Version 0.9.0 - CodecShift Rebrand & Stability
 
-This version focused heavily on improving the dashboard's user experience with new features and significant bug fixes.
+This version marked a significant step forward with a new project identity, major stability improvements, and a polished user experience.
 
+- **Project Rebrand**: The project was officially renamed to **CodecShift** to better reflect its purpose. All project files, documentation, and Docker image names were updated.
+- **Critical Worker Stability**: A series of deep-seated bugs in the worker's state machine were resolved. This fixed issues where workers would fail to loop after a scan, become unresponsive to commands, or disappear from the dashboard when idle. The worker's core processing loop is now robust and reliable.
 - **Node Health Indicators**: To provide a quick visual assessment of the cluster, a colored dot now appears next to each worker's hostname. The color (green, orange, or red) is based on the age of its last heartbeat.
 - **History & Stats Tab Enhancements**:
   - The "History" and "Stats" tabs were merged into a single, streamlined "History & Stats" view.
   - The history table is now fully interactive, with real-time search and pagination to handle a large number of entries.
 - **UI Stability and Polish**:
+  - A new `Dockerfile` was created for the dashboard to properly include static assets like the project logo.
   - The "View Errors" button logic was simplified. It now remains in its default outline style and only turns red when errors are detected.
   - The "glass" effect on the footer was enhanced by increasing its transparency.
   - A cascade of JavaScript bugs was resolved, fixing issues with missing node control buttons, broken UI elements, and inconsistent component styling between tabs.

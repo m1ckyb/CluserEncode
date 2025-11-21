@@ -4,7 +4,7 @@
 
 ## Features
 
-*   **Distributed Transcoding:** Run worker scripts on multiple machines to process files in parallel.
+*   **Distributed Transcoding:** Run worker nodes on multiple machines to process files in parallel.
 *   **Hardware Acceleration:** Automatically detects and uses NVIDIA (NVENC) and Intel (VAAPI) for fast transcoding, with a fallback to CPU.
 *   **Centralized Web Dashboard:** A Flask-based UI for real-time monitoring and management.
     *   **Full Remote Control**: Start, stop, pause, and resume individual worker nodes from the dashboard.

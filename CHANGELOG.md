@@ -2,19 +2,22 @@
 
 ### Added
 
-## [0.9.0] - 2025-11-21 - UI Refinements & Bug Fixes
+## [0.9.0] - 2025-11-21 - CodecShift Rebrand & Stability
 
 ### Added
+- **Dashboard Dockerfile**: Created a `Dockerfile` for the dashboard to ensure all static assets (like the new logo) are correctly included in the container image.
 - **Node Health Indicator**: Added a colored dot (green/orange/red) next to each worker's hostname to provide an at-a-glance view of its health based on the last heartbeat.
 - **Search & Pagination**: Implemented search and pagination for the history table, making it easier to navigate large numbers of encoded files.
 
 ### Changed
+- **Project Rebrand**: The project has been renamed from "Transcode Cluster" to **"CodecShift"**. All relevant files, Docker image names, and UI text have been updated.
 - **Consolidated UI**: Merged the "History" and "Stats" tabs into a single "History & Stats" tab to simplify the interface.
 - **UI Polish**:
   - The "View Errors" button is now consistently styled and only turns red when errors are present, otherwise remaining in its default outline style.
   - The footer now has a more pronounced "glass" effect with increased transparency.
 
 ### Fixed
+- **Worker Stability**: Resolved a series of critical bugs in the worker's main loop that caused it to stop processing, ignore commands, or disappear from the dashboard while idle. The worker is now significantly more robust.
 - **Layout & Stability**: Fixed numerous UI bugs, including:
   - A floating pagination bar on the history tab.
   - Inconsistent button colors between tabs.
